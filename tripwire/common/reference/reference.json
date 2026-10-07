@@ -1,0 +1,161 @@
+{
+  "accounts": [
+    {
+      "account": "ACC001",
+      "owner": "OWN022"
+    },
+    {
+      "account": "ACC002",
+      "owner": "OWN017"
+    },
+    {
+      "account": "ACC003",
+      "owner": "OWN016"
+    },
+    {
+      "account": "ACC004",
+      "owner": "OWN013"
+    },
+    {
+      "account": "ACC005",
+      "owner": "OWN008"
+    },
+    {
+      "account": "ACC006",
+      "owner": "OWN014"
+    },
+    {
+      "account": "ACC007",
+      "owner": "OWN021"
+    },
+    {
+      "account": "ACC008",
+      "owner": "OWN026"
+    },
+    {
+      "account": "ACC009",
+      "owner": "OWN006"
+    },
+    {
+      "account": "ACC010",
+      "owner": "OWN025"
+    },
+    {
+      "account": "ACC011",
+      "owner": "OWN010"
+    },
+    {
+      "account": "ACC012",
+      "owner": "OWN019"
+    },
+    {
+      "account": "ACC013",
+      "owner": "OWN011"
+    },
+    {
+      "account": "ACC014",
+      "owner": "OWN023"
+    },
+    {
+      "account": "ACC015",
+      "owner": "OWN029"
+    },
+    {
+      "account": "ACC016",
+      "owner": "OWN015"
+    },
+    {
+      "account": "ACC017",
+      "owner": "OWN012"
+    },
+    {
+      "account": "ACC018",
+      "owner": "OWN001"
+    },
+    {
+      "account": "ACC019",
+      "owner": "OWN031"
+    },
+    {
+      "account": "ACC020",
+      "owner": "OWN010"
+    },
+    {
+      "account": "ACC021",
+      "owner": "OWN007"
+    },
+    {
+      "account": "ACC022",
+      "owner": "OWN005"
+    },
+    {
+      "account": "ACC023",
+      "owner": "OWN011"
+    },
+    {
+      "account": "ACC024",
+      "owner": "OWN030"
+    },
+    {
+      "account": "ACC025",
+      "owner": "OWN024"
+    },
+    {
+      "account": "ACC026",
+      "owner": "OWN009"
+    },
+    {
+      "account": "ACC027",
+      "owner": "OWN024"
+    },
+    {
+      "account": "ACC028",
+      "owner": "OWN003"
+    },
+    {
+      "account": "ACC029",
+      "owner": "OWN018"
+    },
+    {
+      "account": "ACC030",
+      "owner": "OWN032"
+    },
+    {
+      "account": "ACC031",
+      "owner": "OWN028"
+    },
+    {
+      "account": "ACC032",
+      "owner": "OWN002"
+    },
+    {
+      "account": "ACC033",
+      "owner": "OWN004"
+    },
+    {
+      "account": "ACC034",
+      "owner": "OWN027"
+    },
+    {
+      "account": "ACC035",
+      "owner": "OWN020"
+    }
+  ],
+  "symbols": [
+    {
+      "symbol": "ACME",
+      "tick_size": 0.01,
+      "reference_price": 10000
+    },
+    {
+      "symbol": "BOLT",
+      "tick_size": 0.01,
+      "reference_price": 2500
+    },
+    {
+      "symbol": "CRUX",
+      "tick_size": 0.01,
+      "reference_price": 4200
+    }
+  ]
+}
