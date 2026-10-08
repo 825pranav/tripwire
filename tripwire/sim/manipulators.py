@@ -58,9 +58,9 @@ class Spoofer(Agent):
         self.fake_ids = []
         step = -1 if fake_side is Side.BUY else 1
         if self.layers > 1:
-            levels = [(touch + i * step, rng.randint(8, 15) * 100) for i in range(self.layers)]
+            levels = [(touch + i * step, rng.randint(4, 12) * 100) for i in range(self.layers)]
         else:
-            levels = [(touch + rng.choice((0, 0, 1)) * step, rng.randint(30, 60) * 100)]
+            levels = [(touch + rng.choice((0, 0, 1, 2)) * step, rng.randint(12, 60) * 100)]
         for price, qty in levels:
             order_id = sim.submit_limit(self, symbol, fake_side, price, qty)
             self.fake_ids.append(order_id)
@@ -93,7 +93,9 @@ class Spoofer(Agent):
     def _react_to_fill(self, sim: Simulation) -> None:
         if not self.closing:
             self.closing = True
-            delay = self.rng.randint(1, 40) * MS
+            # Most spoofers pull within tens of milliseconds; some are slower.
+            fast = self.rng.random() < 0.75
+            delay = (self.rng.randint(1, 40) if fast else self.rng.randint(60, 600)) * MS
             sim.after(delay, partial(self._finish, sim, self.cycle_no))
 
     def _finish(self, sim: Simulation, cycle_no: int) -> None:
@@ -145,7 +147,8 @@ class WashTrader(Agent):
         seller, buyer = self.accounts if rng.random() < 0.5 else self.accounts[::-1]
         sell_id = sim.submit_limit(self, self.symbol, Side.SELL, price, qty, account=seller)
         self.episode.touch(sim.now, sell_id)
-        delay = rng.randint(1, 20) * MS
+        # Usually the second leg follows within milliseconds; sometimes it waits seconds.
+        delay = (rng.randint(1, 20) if rng.random() < 0.75 else rng.randint(300, 4000)) * MS
         sim.after(delay, partial(self._cross, sim, buyer, price, qty, sell_id))
 
     def _cross(self, sim: Simulation, buyer: str, price: int, qty: int, sell_id: int) -> None:
@@ -187,9 +190,9 @@ class CloseMarker(Agent):
         touch = _best(sim, self.symbol, self.side.opposite)
         if touch is None:
             touch = round(sim.mid(self.symbol))
-        through = rng.randint(1, 3)
+        through = rng.choice((0, 1, 1, 2, 3))
         price = touch + through if self.side is Side.BUY else touch - through
-        qty = rng.randint(3, 8) * 100
+        qty = rng.randint(2, 8) * 100
         order_id = sim.submit_limit(self, self.symbol, self.side, price, qty)
         self.episode.touch(sim.now, order_id)
         remaining = sim.close_ns - sim.now
@@ -243,7 +246,7 @@ def schedule_episodes(sim: Simulation, counts: EpisodeCounts) -> list[Agent]:
                 rng.choice(sim.symbols),
                 mid_session_start(),
                 cycles=rng.randint(2, 4),
-                layers=rng.randint(4, 6),
+                layers=rng.randint(3, 6),
             )
         )
     for i in range(counts.wash):
@@ -259,6 +262,6 @@ def schedule_episodes(sim: Simulation, counts: EpisodeCounts) -> list[Agent]:
         )
     close_symbols = rng.sample(sim.symbols, min(counts.marking_close, len(sim.symbols)))
     for i, symbol in enumerate(close_symbols):
-        start = sim.close_ns - rng.randint(120, 300) * SECOND
+        start = sim.close_ns - rng.randint(60, 300) * SECOND
         agents.append(CloseMarker(take_single(), sim.rng_for(f"close:{i}"), symbol, start))
     return agents

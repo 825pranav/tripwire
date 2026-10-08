@@ -10,7 +10,13 @@ import random
 
 import msgspec
 
-from tripwire.common.reference import TICK_SIZE, AccountRecord, ReferenceData, SymbolRecord
+from tripwire.common.reference import (
+    TICK_SIZE,
+    AccountRecord,
+    ReferenceData,
+    SessionCalendar,
+    SymbolRecord,
+)
 from tripwire.sim.config import SimConfig
 
 
@@ -82,4 +88,9 @@ def reference_data(config: SimConfig, population: Population) -> ReferenceData:
     return ReferenceData(
         accounts=[AccountRecord(acc, owner) for acc, owner in population.owner_of.items()],
         symbols=[SymbolRecord(s.symbol, TICK_SIZE, s.start_price) for s in config.symbols],
+        session=calendar(config),
     )
+
+
+def calendar(config: SimConfig) -> SessionCalendar:
+    return SessionCalendar(config.first_session_date, config.open_time_utc, config.session_minutes)

@@ -29,6 +29,10 @@ def _passive_price(sim: Simulation, symbol: str, side: Side, ticks_behind: int) 
     return touch - ticks_behind if side is Side.BUY else touch + ticks_behind
 
 
+def _lots(rng: random.Random, lots: tuple[int, ...], multiplier: float) -> int:
+    return round(rng.choice(lots) * multiplier) * 100
+
+
 class MarketMaker(Agent):
     """Quotes two levels on both sides of every symbol around a blend of fair value and
     mid, skewed against inventory. Cancels and replaces everything on each requote."""
@@ -65,12 +69,18 @@ class MarketMaker(Agent):
             bid = min(bid, best_ask - 1)  # post-only: never cross the book
         if best_bid is not None:
             ask = max(ask, best_bid + 1)
+        # Quote more size on the side that works off inventory. This makes a long market
+        # maker show a large ask that it pulls milliseconds after its bid is hit, which is
+        # the legitimate look-alike of spoofing.
         lots = self.config.mm_lots
+        inventory = self.inventory[symbol]
+        lean = 1 + min(2.0, abs(inventory) / 1_500)
+        bid_mult, ask_mult = (1.0, lean) if inventory > 0 else (lean, 1.0)
         self.quotes[symbol] = [
-            sim.submit_limit(self, symbol, Side.BUY, bid, rng.choice(lots) * 100),
-            sim.submit_limit(self, symbol, Side.SELL, ask, rng.choice(lots) * 100),
-            sim.submit_limit(self, symbol, Side.BUY, bid - 1, 2 * rng.choice(lots) * 100),
-            sim.submit_limit(self, symbol, Side.SELL, ask + 1, 2 * rng.choice(lots) * 100),
+            sim.submit_limit(self, symbol, Side.BUY, bid, _lots(rng, lots, bid_mult)),
+            sim.submit_limit(self, symbol, Side.SELL, ask, _lots(rng, lots, ask_mult)),
+            sim.submit_limit(self, symbol, Side.BUY, bid - 1, _lots(rng, lots, 2 * bid_mult)),
+            sim.submit_limit(self, symbol, Side.SELL, ask + 1, _lots(rng, lots, 2 * ask_mult)),
         ]
 
     def on_fill(self, sim: Simulation, order_id: int, trade: Trade) -> None:
@@ -174,9 +184,12 @@ class Institutional(Agent):
         rng = self.rng
         symbol = rng.choice(sim.symbols)
         side = rng.choice((Side.BUY, Side.SELL))
-        price = _passive_price(sim, symbol, side, rng.randint(1, 4))
+        price = _passive_price(sim, symbol, side, rng.randint(0, 4))
         order_id = sim.submit_limit(self, symbol, side, price, rng.randint(20, 60) * 100)
-        lifetime = rng.uniform(2, 10) * MINUTE
+        # Usually rests for minutes; sometimes the desk changes its mind quickly.
+        lifetime = (
+            rng.uniform(2, 10) * MINUTE if rng.random() < 0.75 else rng.uniform(5, 60) * SECOND
+        )
         sim.after(int(lifetime), partial(self._cancel_if_live, sim, symbol, order_id))
         sim.after(int(rng.expovariate(1 / 6) * MINUTE) + SECOND, partial(self._post_large, sim))
 

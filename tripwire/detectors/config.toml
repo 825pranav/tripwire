@@ -1,0 +1,30 @@
+# Rule thresholds. Tuned on simulated tuning seeds (0-9), evaluated on separate seeds.
+
+[spoofing]
+cancel_window_ms = 100       # large order cancelled within this long after the opposite fill
+min_large_qty = 2000         # absolute floor for a "large" order (shares)
+touch_multiple = 3.0         # ... and at least this many times the displayed touch size
+fill_ratio = 5.0             # ... and at least this many times the genuine fill
+min_side_asymmetry = 6.0     # ... and this many times ALL its opposite-side interest
+max_ticks_from_touch = 2     # placed at or near the touch
+max_lifetime_s = 60          # spoof orders are short-lived
+
+[layering]
+cancel_window_ms = 100
+min_levels = 3               # distinct price levels cancelled on one side
+min_total_qty = 2500
+fill_ratio = 5.0
+max_ticks_from_touch = 6
+
+[wash]
+window_s = 600               # same-owner crosses counted over this window
+min_trades = 3
+max_resting_ms = 2000        # the passive leg rested only briefly before being hit
+
+[marking_close]
+window_s = 300               # final minutes of the session
+min_aggressive_qty = 3000
+min_share = 0.25             # account's aggressive volume / symbol volume in the window
+min_one_sided = 0.85         # fraction of the account's aggressive volume on one side
+min_impact_ticks = 4         # price moved this far in the account's direction
+min_orders = 5

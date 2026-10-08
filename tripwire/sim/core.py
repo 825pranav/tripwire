@@ -13,14 +13,13 @@ import math
 import random
 import time
 from collections.abc import Callable
-from datetime import UTC, date, datetime, timedelta
 from functools import partial
 
 from tripwire.common.events import Event, OrderCancelled, Side, Trade
 from tripwire.exchange.engine import MatchingEngine
 from tripwire.sim.config import SimConfig
 from tripwire.sim.labels import Episode
-from tripwire.sim.population import Population
+from tripwire.sim.population import Population, calendar
 
 MS = 1_000_000
 SECOND = 1_000_000_000
@@ -60,13 +59,6 @@ class Agent:
         self.live.pop(event.order_id, None)
 
 
-def session_open_ns(config: SimConfig, day: int) -> int:
-    hour, minute = (int(part) for part in config.open_time_utc.split(":"))
-    first = date.fromisoformat(config.first_session_date) + timedelta(days=day)
-    opened = datetime(first.year, first.month, first.day, hour, minute, tzinfo=UTC)
-    return int(opened.timestamp()) * SECOND
-
-
 class Simulation:
     def __init__(
         self, config: SimConfig, population: Population, seed: int, day: int, sink: Sink
@@ -76,7 +68,7 @@ class Simulation:
         self.seed = seed
         self.day = day
         self.sink = sink
-        self.open_ns = session_open_ns(config, day)
+        self.open_ns = calendar(config).open_ns(day)
         self.close_ns = self.open_ns + config.session_minutes * MINUTE
         self.now = self.open_ns
         self.symbols = [spec.symbol for spec in config.symbols]
