@@ -1,6 +1,6 @@
 # Tripwire. Targets are added phase by phase; `make check` runs after every phase.
 
-.PHONY: help install lint format typecheck test test-full determinism check check-full sim-replay
+.PHONY: help install lint format typecheck test test-full determinism smoke-eval eval check check-full sim-replay
 
 help:
 	@echo "install      uv sync (all dependency groups)"
@@ -8,8 +8,9 @@ help:
 	@echo "format       ruff format + ruff check --fix"
 	@echo "typecheck    mypy (strict on exchange/detectors/common)"
 	@echo "test         fast pytest suite (excludes slow)"
-	@echo "check        lint + typecheck + fast tests + determinism (< ~60s)"
-	@echo "check-full   check + slow tests"
+	@echo "eval         rules/ML on 10 seeded days -> tripwire/eval/results"
+	@echo "check        lint + typecheck + fast tests + determinism + smoke eval (< ~60s)"
+	@echo "check-full   check + slow tests + 20-day eval, diffed against the last full run"
 	@echo "sim-replay   simulate one seeded day at max speed"
 
 install:
@@ -35,9 +36,16 @@ test-full:
 determinism:
 	uv run python -m tripwire.sim.determinism
 
-check: lint typecheck test determinism
+smoke-eval:
+	uv run python -m tripwire.eval --smoke
 
-check-full: lint typecheck test-full determinism
+eval:
+	uv run python -m tripwire.eval --days 10
+
+check: lint typecheck test determinism smoke-eval
+
+check-full: lint typecheck test-full determinism smoke-eval
+	uv run python -m tripwire.eval --days 20 --full
 
 sim-replay:
 	uv run python -m tripwire.sim --seed 42 --days 1

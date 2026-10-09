@@ -1,0 +1,62 @@
+{
+  "days": 1,
+  "seeds": [
+    1000,
+    1000
+  ],
+  "session_minutes": 120,
+  "events": 331861,
+  "throughput": {
+    "sim_events_per_s": 265108,
+    "detector_events_per_s": 656273
+  },
+  "methods": {
+    "rules": {
+      "spoofing": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 5,
+        "tp_alerts": 5,
+        "episodes": 3,
+        "detected": 3
+      },
+      "layering": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 2,
+        "tp_alerts": 2,
+        "episodes": 2,
+        "detected": 2
+      },
+      "wash": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 2,
+        "tp_alerts": 2,
+        "episodes": 2,
+        "detected": 2
+      },
+      "marking_close": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 1,
+        "tp_alerts": 1,
+        "episodes": 1,
+        "detected": 1
+      },
+      "overall": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 10,
+        "tp_alerts": 10,
+        "episodes": 8,
+        "detected": 8
+      }
+    }
+  }
+}
