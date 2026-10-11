@@ -9,7 +9,7 @@ ML alerts (`ml_anomaly`) are untyped and may match any episode.
 from __future__ import annotations
 
 from tripwire.common.alerts import Alert
-from tripwire.sim.labels import Episode
+from tripwire.sim.episode import Episode
 
 TOLERANCE_NS = 30 * 1_000_000_000
 EPISODE_TYPES = ("spoofing", "layering", "wash", "marking_close")

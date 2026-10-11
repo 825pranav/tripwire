@@ -14,6 +14,7 @@ import shutil
 import sys
 
 from tripwire.eval.harness import DayRun, evaluate
+from tripwire.eval.methods import ml_methods
 from tripwire.eval.report import (
     BASELINE_PATH,
     RESULTS_DIR,
@@ -22,6 +23,8 @@ from tripwire.eval.report import (
     markdown,
     save,
 )
+from tripwire.sim.config import SimConfig
+from tripwire.sim.population import build_population, reference_data
 
 
 def main() -> int:
@@ -30,6 +33,7 @@ def main() -> int:
     parser.add_argument("--smoke", action="store_true", help="1 day, compare with baseline")
     parser.add_argument("--save-baseline", action="store_true")
     parser.add_argument("--full", action="store_true", help="save as full_run and diff")
+    parser.add_argument("--rules-only", action="store_true", help="skip ML, union and fusion")
     args = parser.parse_args()
 
     days = 1 if args.smoke else args.days
@@ -42,7 +46,13 @@ def main() -> int:
             file=sys.stderr,
         )
 
-    results = evaluate(days, progress=progress, timing_repeats=3 if args.smoke else 1)
+    config = SimConfig()
+    methods = None
+    if not args.rules_only:
+        reference = reference_data(config, build_population(config))
+        methods = ml_methods(reference)
+    repeats = 3 if args.smoke else 1
+    results = evaluate(days, config, methods, progress=progress, timing_repeats=repeats)
 
     if args.smoke:
         print(markdown(results))

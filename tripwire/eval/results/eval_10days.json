@@ -1,0 +1,203 @@
+{
+  "days": 10,
+  "seeds": [
+    1000,
+    1009
+  ],
+  "session_minutes": 120,
+  "events": 3283813,
+  "throughput": {
+    "sim_events_per_s": 266149,
+    "detector_events_per_s": 629177
+  },
+  "methods": {
+    "rules": {
+      "spoofing": {
+        "precision": 1.0,
+        "recall": 0.7667,
+        "f1": 0.8679,
+        "alerts": 42,
+        "tp_alerts": 42,
+        "episodes": 30,
+        "detected": 23
+      },
+      "layering": {
+        "precision": 1.0,
+        "recall": 0.95,
+        "f1": 0.9744,
+        "alerts": 34,
+        "tp_alerts": 34,
+        "episodes": 20,
+        "detected": 19
+      },
+      "wash": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 20,
+        "tp_alerts": 20,
+        "episodes": 20,
+        "detected": 20
+      },
+      "marking_close": {
+        "precision": 1.0,
+        "recall": 0.9,
+        "f1": 0.9474,
+        "alerts": 9,
+        "tp_alerts": 9,
+        "episodes": 10,
+        "detected": 9
+      },
+      "overall": {
+        "precision": 1.0,
+        "recall": 0.8875,
+        "f1": 0.9404,
+        "alerts": 105,
+        "tp_alerts": 105,
+        "episodes": 80,
+        "detected": 71
+      }
+    },
+    "ml": {
+      "spoofing": {
+        "precision": null,
+        "recall": 0.0,
+        "f1": null,
+        "alerts": 0,
+        "tp_alerts": 0,
+        "episodes": 30,
+        "detected": 0
+      },
+      "layering": {
+        "precision": null,
+        "recall": 0.0,
+        "f1": null,
+        "alerts": 0,
+        "tp_alerts": 0,
+        "episodes": 20,
+        "detected": 0
+      },
+      "wash": {
+        "precision": 1.0,
+        "recall": 0.75,
+        "f1": 0.8571,
+        "alerts": 25,
+        "tp_alerts": 25,
+        "episodes": 20,
+        "detected": 15
+      },
+      "marking_close": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 10,
+        "tp_alerts": 10,
+        "episodes": 10,
+        "detected": 10
+      },
+      "overall": {
+        "precision": 0.2846,
+        "recall": 0.3125,
+        "f1": 0.2979,
+        "alerts": 123,
+        "tp_alerts": 35,
+        "episodes": 80,
+        "detected": 25
+      }
+    },
+    "union": {
+      "spoofing": {
+        "precision": 1.0,
+        "recall": 0.7667,
+        "f1": 0.8679,
+        "alerts": 42,
+        "tp_alerts": 42,
+        "episodes": 30,
+        "detected": 23
+      },
+      "layering": {
+        "precision": 1.0,
+        "recall": 0.95,
+        "f1": 0.9744,
+        "alerts": 34,
+        "tp_alerts": 34,
+        "episodes": 20,
+        "detected": 19
+      },
+      "wash": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 45,
+        "tp_alerts": 45,
+        "episodes": 20,
+        "detected": 20
+      },
+      "marking_close": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 19,
+        "tp_alerts": 19,
+        "episodes": 10,
+        "detected": 10
+      },
+      "overall": {
+        "precision": 0.614,
+        "recall": 0.9,
+        "f1": 0.73,
+        "alerts": 228,
+        "tp_alerts": 140,
+        "episodes": 80,
+        "detected": 72
+      }
+    },
+    "fusion": {
+      "spoofing": {
+        "precision": 1.0,
+        "recall": 0.7667,
+        "f1": 0.8679,
+        "alerts": 27,
+        "tp_alerts": 27,
+        "episodes": 30,
+        "detected": 23
+      },
+      "layering": {
+        "precision": 1.0,
+        "recall": 0.95,
+        "f1": 0.9744,
+        "alerts": 20,
+        "tp_alerts": 20,
+        "episodes": 20,
+        "detected": 19
+      },
+      "wash": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 48,
+        "tp_alerts": 48,
+        "episodes": 20,
+        "detected": 20
+      },
+      "marking_close": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 10,
+        "tp_alerts": 10,
+        "episodes": 10,
+        "detected": 10
+      },
+      "overall": {
+        "precision": 0.7241,
+        "recall": 0.9,
+        "f1": 0.8025,
+        "alerts": 145,
+        "tp_alerts": 105,
+        "episodes": 80,
+        "detected": 72
+      }
+    }
+  }
+}

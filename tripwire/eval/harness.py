@@ -19,7 +19,8 @@ from tripwire.detectors.suite import DetectorSuite
 from tripwire.eval.matching import EPISODE_TYPES, matches
 from tripwire.sim.config import SimConfig
 from tripwire.sim.day import simulate_day
-from tripwire.sim.labels import Episode, labels_path, read_labels, write_labels
+from tripwire.sim.episode import Episode
+from tripwire.sim.labels import labels_path, read_labels, write_labels
 from tripwire.sim.population import Population, build_population, reference_data
 
 EVAL_SEED_BASE = 1000  # tuning used seeds 0-9; evaluation days never reuse them

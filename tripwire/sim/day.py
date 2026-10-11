@@ -7,7 +7,7 @@ import msgspec
 from tripwire.sim.agents import Institutional, MarketMaker, MomentumTrader, NoiseTrader
 from tripwire.sim.config import SimConfig
 from tripwire.sim.core import Simulation, Sink
-from tripwire.sim.labels import Episode
+from tripwire.sim.episode import Episode
 from tripwire.sim.manipulators import schedule_episodes
 from tripwire.sim.population import Population, build_population
 

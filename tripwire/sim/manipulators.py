@@ -9,7 +9,7 @@ from functools import partial
 from tripwire.common.events import Side, Trade
 from tripwire.sim.config import EpisodeCounts
 from tripwire.sim.core import MINUTE, MS, SECOND, Agent, Simulation
-from tripwire.sim.labels import Episode
+from tripwire.sim.episode import Episode
 
 
 def _best(sim: Simulation, symbol: str, side: Side) -> int | None:

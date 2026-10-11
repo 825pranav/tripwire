@@ -5,7 +5,7 @@ from tripwire.eval.harness import count, evaluate
 from tripwire.eval.matching import matches
 from tripwire.eval.report import check_against_baseline, diff, markdown
 from tripwire.sim.config import SimConfig
-from tripwire.sim.labels import Episode
+from tripwire.sim.episode import Episode
 
 S = 1_000_000_000
 OWNERS = {"A1": "O1", "A2": "O1", "B1": "O2"}

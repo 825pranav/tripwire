@@ -18,7 +18,7 @@ from functools import partial
 from tripwire.common.events import Event, OrderCancelled, Side, Trade
 from tripwire.exchange.engine import MatchingEngine
 from tripwire.sim.config import SimConfig
-from tripwire.sim.labels import Episode
+from tripwire.sim.episode import Episode
 from tripwire.sim.population import Population, calendar
 
 MS = 1_000_000

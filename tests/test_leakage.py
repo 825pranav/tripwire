@@ -1,7 +1,8 @@
 """Label isolation: detectors and the ML layer must never see ground-truth labels.
 
 Static check: no module under `tripwire/detectors` or `tripwire/ml` imports
-`tripwire.eval` or `tripwire.sim.labels`, or mentions the labels directory.
+`tripwire.eval` or `tripwire.sim.labels`, mentions the labels directory, or reads the
+`episodes` a simulated day returns.
 Runtime check: importing every detector/ML module in a fresh interpreter does not load
 either of those modules.
 """
@@ -14,7 +15,14 @@ from pathlib import Path
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent / "tripwire"
 GUARDED = ("detectors", "ml")
 FORBIDDEN_MODULES = ("tripwire.eval", "tripwire.sim.labels")
-FORBIDDEN_STRINGS = ("eval/labels", "eval\\labels", "labels_path", "read_labels", "LABELS_DIR")
+FORBIDDEN_STRINGS = (
+    "eval/labels",
+    "eval\\labels",
+    "labels_path",
+    "read_labels",
+    "LABELS_DIR",
+    ".episodes",  # ground truth carried on DayResult; ML trains on clean days only
+)
 
 
 def guarded_files() -> list[Path]:
