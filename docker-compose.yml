@@ -1,0 +1,90 @@
+name: tripwire
+
+x-app: &app
+  build: .
+  image: tripwire-app
+  restart: unless-stopped
+  environment: &app-env
+    KAFKA_BOOTSTRAP: kafka:19092
+    DATABASE_URL: postgresql://tripwire:tripwire@postgres:5432/tripwire
+    OLLAMA_HOST: ${OLLAMA_HOST_FROM_DOCKER:-http://host.docker.internal:11434}
+    OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b-instruct}
+    SIM_SEED: ${SIM_SEED:-42}
+    SIM_SPEED: ${SIM_SPEED:-5}
+    INVESTIGATOR_CONCURRENCY: ${INVESTIGATOR_CONCURRENCY:-1}
+    INVESTIGATOR_QUEUE_CAP: ${INVESTIGATOR_QUEUE_CAP:-50}
+  extra_hosts:
+    - "host.docker.internal:host-gateway"  # reach Ollama on the host (needed on Linux)
+  depends_on:
+    kafka:
+      condition: service_healthy
+    postgres:
+      condition: service_healthy
+
+services:
+  kafka:
+    image: apache/kafka:3.9.1
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:19092,CONTROLLER://:9093,EXTERNAL://:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:19092,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_LOG_RETENTION_HOURS: 24
+    ports:
+      - "9092:9092"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:19092 > /dev/null 2>&1"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 10s
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tripwire
+      POSTGRES_PASSWORD: tripwire
+      POSTGRES_DB: tripwire
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tripwire -d tripwire"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  sim:
+    <<: *app
+    profiles: ["sim"]  # started by `make sim` / `make demo`
+    command: ["python", "-m", "tripwire.sim.stream"]
+
+  detectors:
+    <<: *app
+    command: ["python", "-m", "tripwire.detectors.runner"]
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    profiles: ["debug"]
+    environment:
+      KAFKA_CLUSTERS_0_NAME: tripwire
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:19092
+    ports:
+      - "8080:8080"
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+volumes:
+  pgdata:

@@ -1,6 +1,6 @@
 # Tripwire. Targets are added phase by phase; `make check` runs after every phase.
 
-.PHONY: help install lint format typecheck test test-full determinism smoke-eval eval train check check-full sim-replay
+.PHONY: help install lint format typecheck test test-full determinism smoke-eval eval train check check-full sim-replay up down sim logs doctor
 
 help:
 	@echo "install      uv sync (all dependency groups)"
@@ -12,7 +12,12 @@ help:
 	@echo "eval         rules, ML, union and fusion on 10 seeded days -> tripwire/eval/results"
 	@echo "check        lint + typecheck + fast tests + determinism + smoke eval (< ~60s)"
 	@echo "check-full   check + slow tests + 20-day eval, diffed against the last full run"
-	@echo "sim-replay   simulate one seeded day at max speed"
+	@echo "sim-replay   simulate one seeded day at max speed (no Kafka)"
+	@echo "up           start Kafka, Postgres and the services (docker compose)"
+	@echo "sim          start the realtime simulator feeding Kafka"
+	@echo "down         stop everything (keeps the database volume)"
+	@echo "logs         follow service logs"
+	@echo "doctor       pass/fail health table for the running system"
 
 install:
 	uv sync
@@ -53,3 +58,18 @@ check-full: lint typecheck test-full determinism smoke-eval
 
 sim-replay:
 	uv run python -m tripwire.sim --seed 42 --days 1
+
+up:
+	docker compose up -d --build
+
+sim:
+	docker compose --profile sim up -d sim
+
+down:
+	docker compose --profile sim --profile debug down
+
+logs:
+	docker compose logs -f --tail 50
+
+doctor:
+	uv run python -m tripwire.ops.doctor
