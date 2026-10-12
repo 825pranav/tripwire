@@ -1,6 +1,6 @@
 # Tripwire. Targets are added phase by phase; `make check` runs after every phase.
 
-.PHONY: help install lint format typecheck test test-full determinism smoke-eval propose-baseline approve-baseline eval train check check-full sim-replay up down sim logs doctor
+.PHONY: help install lint format typecheck test test-full determinism smoke-eval propose-baseline approve-baseline eval train check check-full sim-replay up down sim logs doctor demo frontend frontend-build
 
 help:
 	@echo "install      uv sync (all dependency groups)"
@@ -19,6 +19,8 @@ help:
 	@echo "down         stop everything (keeps the database volume)"
 	@echo "logs         follow service logs"
 	@echo "doctor       pass/fail health table for the running system"
+	@echo "demo         up + sim, then open the dashboard at http://localhost:8000"
+	@echo "frontend     run the Vite dev server (proxying the API on :8000)"
 
 install:
 	uv sync
@@ -60,7 +62,7 @@ eval:
 
 check: lint typecheck test determinism smoke-eval
 
-check-full: lint typecheck test-full determinism smoke-eval
+check-full: lint typecheck test-full determinism smoke-eval frontend-build
 	uv run python -m tripwire.eval --days 20 --full --citations 10
 
 sim-replay:
@@ -81,3 +83,11 @@ logs:
 doctor:
 	uv run python -m tripwire.ops.doctor
 
+demo: up sim
+	uv run python -c "import webbrowser, time; time.sleep(5); webbrowser.open('http://localhost:8000')"
+
+frontend:
+	cd frontend && npm install && npm run dev
+
+frontend-build:
+	cd frontend && npm ci --no-audit --no-fund && npm run build

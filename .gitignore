@@ -10,3 +10,5 @@ data/
 tripwire/eval/labels/*.jsonl
 node_modules/
 frontend/dist/
+frontend/*.tsbuildinfo
+tripwire/eval/results/*.prev.json
