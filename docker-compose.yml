@@ -74,6 +74,10 @@ services:
     <<: *app
     command: ["python", "-m", "tripwire.detectors.runner"]
 
+  investigator:
+    <<: *app
+    command: ["python", "-m", "tripwire.investigator.service"]
+
   kafka-ui:
     image: provectuslabs/kafka-ui:v0.7.2
     profiles: ["debug"]

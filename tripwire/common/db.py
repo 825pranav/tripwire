@@ -20,7 +20,7 @@ def connect(url: str, retries: int = 30) -> psycopg.Connection:
     """Connect with autocommit, retrying while the database starts up."""
     for attempt in range(retries):
         try:
-            return psycopg.connect(url, autocommit=True)
+            return psycopg.connect(url, autocommit=True, connect_timeout=5)
         except psycopg.OperationalError:
             if attempt == retries - 1:
                 raise

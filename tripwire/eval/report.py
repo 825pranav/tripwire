@@ -10,6 +10,7 @@ from tripwire.eval.matching import EPISODE_TYPES
 
 RESULTS_DIR = Path(__file__).resolve().parent / "results"
 BASELINE_PATH = RESULTS_DIR / "baseline.json"
+PROPOSED_BASELINE_PATH = RESULTS_DIR / "baseline.proposed.json"
 F1_TOLERANCE = 0.05
 THROUGHPUT_TOLERANCE = 0.20
 
@@ -40,12 +41,16 @@ def markdown(results: dict[str, Any]) -> str:
         f"Throughput (in-process, single thread): simulator {tp['sim_events_per_s']:,} events/s, "
         f"detectors {tp['detector_events_per_s']:,} events/s.",
     ]
-    if "citations" in results:
-        c = results["citations"]
+    c = results.get("citations")
+    if c and "skipped" in c:
+        lines.append(f"LLM citation check skipped: {c['skipped']}.")
+    elif c:
         lines.append(
-            f"LLM citation accuracy on {c['reports']} sampled alerts ({c['model']}): "
-            f"{c['accuracy']:.3f} of {c['citations']} cited orders valid; "
-            f"{c['verified_reports']} reports verified."
+            f"LLM citation accuracy ({c['model']}, {c['reports']} sampled alerts): "
+            f"{c['valid_citations']}/{c['citations']} cited orders valid ({c['accuracy']}); "
+            f"{c['verified_reports']} reports verified ({c['verified_first_try']} on the first "
+            f"try), {c['unverified_reports']} unverified, {c['fallback_reports']} fallback; "
+            f"median {c['median_latency_ms']} ms per report."
         )
     return "\n".join(lines) + "\n"
 

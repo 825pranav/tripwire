@@ -1,0 +1,92 @@
+# Curated, static regulation references per alert type. The LLM never writes these.
+# General reference only, not legal advice. Shown with every case report.
+
+[[spoofing]]
+jurisdiction = "US"
+citation = "Securities Exchange Act of 1934, Section 9(a)(2)"
+summary = "Prohibits a series of transactions creating actual or apparent active trading, or raising or depressing the price, to induce others to buy or sell."
+
+[[spoofing]]
+jurisdiction = "US"
+citation = "SEC Rule 10b-5 (17 CFR 240.10b-5)"
+summary = "General anti-fraud rule against manipulative or deceptive devices in connection with the purchase or sale of securities."
+
+[[spoofing]]
+jurisdiction = "US (futures)"
+citation = "Commodity Exchange Act, Section 4c(a)(5)(C)"
+summary = "Prohibits spoofing: bidding or offering with the intent to cancel before execution."
+
+[[spoofing]]
+jurisdiction = "EU"
+citation = "Market Abuse Regulation (EU) No 596/2014, Article 12"
+summary = "Defines market manipulation, including orders that give false or misleading signals as to supply, demand or price."
+
+[[spoofing]]
+jurisdiction = "India"
+citation = "SEBI (Prohibition of Fraudulent and Unfair Trade Practices relating to Securities Market) Regulations, 2003, Regulations 3 and 4"
+summary = "Prohibit manipulative, fraudulent and unfair trade practices, including creating a false or misleading appearance of trading."
+
+[[layering]]
+jurisdiction = "US"
+citation = "Securities Exchange Act of 1934, Section 9(a)(2)"
+summary = "Prohibits a series of transactions creating actual or apparent active trading, or raising or depressing the price, to induce others to buy or sell."
+
+[[layering]]
+jurisdiction = "US"
+citation = "SEC Rule 10b-5 (17 CFR 240.10b-5)"
+summary = "General anti-fraud rule against manipulative or deceptive devices in connection with the purchase or sale of securities."
+
+[[layering]]
+jurisdiction = "EU"
+citation = "Market Abuse Regulation (EU) No 596/2014, Article 12"
+summary = "Defines market manipulation, including orders that give false or misleading signals as to supply, demand or price."
+
+[[layering]]
+jurisdiction = "India"
+citation = "SEBI (Prohibition of Fraudulent and Unfair Trade Practices relating to Securities Market) Regulations, 2003, Regulations 3 and 4"
+summary = "Prohibit manipulative, fraudulent and unfair trade practices, including creating a false or misleading appearance of trading."
+
+[[wash]]
+jurisdiction = "US"
+citation = "Securities Exchange Act of 1934, Section 9(a)(1)"
+summary = "Prohibits wash sales and matched orders: transactions that involve no change in beneficial ownership, entered to create a false appearance of active trading."
+
+[[wash]]
+jurisdiction = "US"
+citation = "SEC Rule 10b-5 (17 CFR 240.10b-5)"
+summary = "General anti-fraud rule against manipulative or deceptive devices in connection with the purchase or sale of securities."
+
+[[wash]]
+jurisdiction = "EU"
+citation = "Market Abuse Regulation (EU) No 596/2014, Article 12"
+summary = "Defines market manipulation, including transactions that give false or misleading signals as to supply, demand or price."
+
+[[wash]]
+jurisdiction = "India"
+citation = "SEBI (Prohibition of Fraudulent and Unfair Trade Practices relating to Securities Market) Regulations, 2003, Regulations 3 and 4"
+summary = "Prohibit manipulative and unfair trade practices, including dealings not intended to transfer beneficial ownership."
+
+[[marking_close]]
+jurisdiction = "US"
+citation = "Securities Exchange Act of 1934, Section 9(a)(2)"
+summary = "Prohibits a series of transactions raising or depressing the price of a security to induce others to buy or sell."
+
+[[marking_close]]
+jurisdiction = "US"
+citation = "SEC Rule 10b-5 (17 CFR 240.10b-5)"
+summary = "General anti-fraud rule against manipulative or deceptive devices in connection with the purchase or sale of securities."
+
+[[marking_close]]
+jurisdiction = "EU"
+citation = "Market Abuse Regulation (EU) No 596/2014, Article 12"
+summary = "Defines market manipulation, including securing the price of an instrument at an abnormal or artificial level."
+
+[[marking_close]]
+jurisdiction = "India"
+citation = "SEBI (Prohibition of Fraudulent and Unfair Trade Practices relating to Securities Market) Regulations, 2003, Regulations 3 and 4"
+summary = "Prohibit manipulative, fraudulent and unfair trade practices, including manipulating the price of a security."
+
+[[ml_anomaly]]
+jurisdiction = "General"
+citation = "No specific provision: statistical anomaly flagged for analyst review"
+summary = "The account's behaviour in this window was unusual compared with normal trading. Review it against the manipulation provisions listed for the rule-based alert types."

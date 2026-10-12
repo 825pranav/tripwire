@@ -1,6 +1,6 @@
 # Tripwire. Targets are added phase by phase; `make check` runs after every phase.
 
-.PHONY: help install lint format typecheck test test-full determinism smoke-eval eval train check check-full sim-replay up down sim logs doctor
+.PHONY: help install lint format typecheck test test-full determinism smoke-eval propose-baseline approve-baseline eval train check check-full sim-replay up down sim logs doctor
 
 help:
 	@echo "install      uv sync (all dependency groups)"
@@ -8,6 +8,7 @@ help:
 	@echo "format       ruff format + ruff check --fix"
 	@echo "typecheck    mypy (strict on exchange/detectors/common)"
 	@echo "test         fast pytest suite (excludes slow)"
+	@echo "propose-baseline / approve-baseline   re-measure the smoke baseline / adopt it"
 	@echo "train        fit the Isolation Forest on simulated clean days"
 	@echo "eval         rules, ML, union and fusion on 10 seeded days -> tripwire/eval/results"
 	@echo "check        lint + typecheck + fast tests + determinism + smoke eval (< ~60s)"
@@ -45,16 +46,22 @@ determinism:
 smoke-eval:
 	uv run python -m tripwire.eval --smoke
 
+propose-baseline:
+	uv run python -m tripwire.eval --smoke --propose-baseline
+
+approve-baseline:
+	uv run python -c "import shutil; shutil.copy('tripwire/eval/results/baseline.proposed.json', 'tripwire/eval/results/baseline.json')"
+
 train:
 	uv run python -m tripwire.ml.train --days 10
 
 eval:
-	uv run python -m tripwire.eval --days 10
+	uv run python -m tripwire.eval --days 10 --citations 10
 
 check: lint typecheck test determinism smoke-eval
 
 check-full: lint typecheck test-full determinism smoke-eval
-	uv run python -m tripwire.eval --days 20 --full
+	uv run python -m tripwire.eval --days 20 --full --citations 10
 
 sim-replay:
 	uv run python -m tripwire.sim --seed 42 --days 1
@@ -73,3 +80,4 @@ logs:
 
 doctor:
 	uv run python -m tripwire.ops.doctor
+

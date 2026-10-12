@@ -7,8 +7,8 @@
   "session_minutes": 120,
   "events": 6562271,
   "throughput": {
-    "sim_events_per_s": 264210,
-    "detector_events_per_s": 649771
+    "sim_events_per_s": 178407,
+    "detector_events_per_s": 426235
   },
   "methods": {
     "rules": {
@@ -57,6 +57,160 @@
         "episodes": 160,
         "detected": 138
       }
+    },
+    "ml": {
+      "spoofing": {
+        "precision": null,
+        "recall": 0.0,
+        "f1": null,
+        "alerts": 0,
+        "tp_alerts": 0,
+        "episodes": 60,
+        "detected": 0
+      },
+      "layering": {
+        "precision": null,
+        "recall": 0.0,
+        "f1": null,
+        "alerts": 0,
+        "tp_alerts": 0,
+        "episodes": 40,
+        "detected": 0
+      },
+      "wash": {
+        "precision": 1.0,
+        "recall": 0.75,
+        "f1": 0.8571,
+        "alerts": 56,
+        "tp_alerts": 56,
+        "episodes": 40,
+        "detected": 30
+      },
+      "marking_close": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 20,
+        "tp_alerts": 20,
+        "episodes": 20,
+        "detected": 20
+      },
+      "overall": {
+        "precision": 0.3077,
+        "recall": 0.3125,
+        "f1": 0.3101,
+        "alerts": 247,
+        "tp_alerts": 76,
+        "episodes": 160,
+        "detected": 50
+      }
+    },
+    "union": {
+      "spoofing": {
+        "precision": 1.0,
+        "recall": 0.7667,
+        "f1": 0.8679,
+        "alerts": 89,
+        "tp_alerts": 89,
+        "episodes": 60,
+        "detected": 46
+      },
+      "layering": {
+        "precision": 1.0,
+        "recall": 0.875,
+        "f1": 0.9333,
+        "alerts": 71,
+        "tp_alerts": 71,
+        "episodes": 40,
+        "detected": 35
+      },
+      "wash": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 96,
+        "tp_alerts": 96,
+        "episodes": 40,
+        "detected": 40
+      },
+      "marking_close": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 37,
+        "tp_alerts": 37,
+        "episodes": 20,
+        "detected": 20
+      },
+      "overall": {
+        "precision": 0.6315,
+        "recall": 0.8812,
+        "f1": 0.7357,
+        "alerts": 464,
+        "tp_alerts": 293,
+        "episodes": 160,
+        "detected": 141
+      }
+    },
+    "fusion": {
+      "spoofing": {
+        "precision": 1.0,
+        "recall": 0.7167,
+        "f1": 0.835,
+        "alerts": 49,
+        "tp_alerts": 49,
+        "episodes": 60,
+        "detected": 43
+      },
+      "layering": {
+        "precision": 1.0,
+        "recall": 0.85,
+        "f1": 0.9189,
+        "alerts": 37,
+        "tp_alerts": 37,
+        "episodes": 40,
+        "detected": 34
+      },
+      "wash": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 94,
+        "tp_alerts": 94,
+        "episodes": 40,
+        "detected": 40
+      },
+      "marking_close": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 20,
+        "tp_alerts": 20,
+        "episodes": 20,
+        "detected": 20
+      },
+      "overall": {
+        "precision": 0.6944,
+        "recall": 0.8562,
+        "f1": 0.7669,
+        "alerts": 288,
+        "tp_alerts": 200,
+        "episodes": 160,
+        "detected": 137
+      }
     }
+  },
+  "pinned_cpu": 0,
+  "citations": {
+    "model": "qwen2.5:7b-instruct",
+    "reports": 10,
+    "citations": 72,
+    "valid_citations": 71,
+    "accuracy": 0.9861,
+    "verified_reports": 9,
+    "verified_first_try": 9,
+    "unverified_reports": 1,
+    "fallback_reports": 0,
+    "median_latency_ms": 39020
   }
 }

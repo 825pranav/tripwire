@@ -1,0 +1,204 @@
+{
+  "days": 1,
+  "seeds": [
+    1000,
+    1000
+  ],
+  "session_minutes": 120,
+  "events": 331861,
+  "throughput": {
+    "sim_events_per_s": 204377,
+    "detector_events_per_s": 523335
+  },
+  "methods": {
+    "rules": {
+      "spoofing": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 5,
+        "tp_alerts": 5,
+        "episodes": 3,
+        "detected": 3
+      },
+      "layering": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 2,
+        "tp_alerts": 2,
+        "episodes": 2,
+        "detected": 2
+      },
+      "wash": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 2,
+        "tp_alerts": 2,
+        "episodes": 2,
+        "detected": 2
+      },
+      "marking_close": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 1,
+        "tp_alerts": 1,
+        "episodes": 1,
+        "detected": 1
+      },
+      "overall": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 10,
+        "tp_alerts": 10,
+        "episodes": 8,
+        "detected": 8
+      }
+    },
+    "ml": {
+      "spoofing": {
+        "precision": null,
+        "recall": 0.0,
+        "f1": null,
+        "alerts": 0,
+        "tp_alerts": 0,
+        "episodes": 3,
+        "detected": 0
+      },
+      "layering": {
+        "precision": null,
+        "recall": 0.0,
+        "f1": null,
+        "alerts": 0,
+        "tp_alerts": 0,
+        "episodes": 2,
+        "detected": 0
+      },
+      "wash": {
+        "precision": 1.0,
+        "recall": 0.5,
+        "f1": 0.6667,
+        "alerts": 2,
+        "tp_alerts": 2,
+        "episodes": 2,
+        "detected": 1
+      },
+      "marking_close": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 1,
+        "tp_alerts": 1,
+        "episodes": 1,
+        "detected": 1
+      },
+      "overall": {
+        "precision": 0.2,
+        "recall": 0.25,
+        "f1": 0.2222,
+        "alerts": 15,
+        "tp_alerts": 3,
+        "episodes": 8,
+        "detected": 2
+      }
+    },
+    "union": {
+      "spoofing": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 5,
+        "tp_alerts": 5,
+        "episodes": 3,
+        "detected": 3
+      },
+      "layering": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 2,
+        "tp_alerts": 2,
+        "episodes": 2,
+        "detected": 2
+      },
+      "wash": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 4,
+        "tp_alerts": 4,
+        "episodes": 2,
+        "detected": 2
+      },
+      "marking_close": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 2,
+        "tp_alerts": 2,
+        "episodes": 1,
+        "detected": 1
+      },
+      "overall": {
+        "precision": 0.52,
+        "recall": 1.0,
+        "f1": 0.6842,
+        "alerts": 25,
+        "tp_alerts": 13,
+        "episodes": 8,
+        "detected": 8
+      }
+    },
+    "fusion": {
+      "spoofing": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 4,
+        "tp_alerts": 4,
+        "episodes": 3,
+        "detected": 3
+      },
+      "layering": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 3,
+        "tp_alerts": 3,
+        "episodes": 2,
+        "detected": 2
+      },
+      "wash": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 5,
+        "tp_alerts": 5,
+        "episodes": 2,
+        "detected": 2
+      },
+      "marking_close": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "alerts": 1,
+        "tp_alerts": 1,
+        "episodes": 1,
+        "detected": 1
+      },
+      "overall": {
+        "precision": 0.65,
+        "recall": 1.0,
+        "f1": 0.7879,
+        "alerts": 20,
+        "tp_alerts": 13,
+        "episodes": 8,
+        "detected": 8
+      }
+    }
+  },
+  "pinned_cpu": 0
+}
