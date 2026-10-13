@@ -1,8 +1,14 @@
 """Citation validator: every order the report cites must exist in the evidence window,
 and the attributes the report states (event, time, side, size, price) must match the
-stored event exactly (time within `TIME_TOLERANCE_MS`)."""
+stored event exactly (time within `TIME_TOLERANCE_MS`).
+
+It also catches one prose error small models make: writing a tick price as dollars
+("$9927" for 9927 ticks, i.e. $99.27). That counts as an error, so it triggers the retry,
+but not as a citation."""
 
 from __future__ import annotations
+
+import re
 
 import msgspec
 
@@ -10,6 +16,11 @@ from tripwire.investigator.evidence import EvidenceWindow
 from tripwire.investigator.schema import CaseReport
 
 TIME_TOLERANCE_MS = 1
+DOLLAR_AMOUNT = re.compile(r"\$\s?(\d[\d,]*(?:\.\d+)?)")
+
+
+def dollars(ticks: int) -> str:
+    return f"{ticks / 100:.2f}"
 
 
 class Validation(msgspec.Struct, frozen=True):
@@ -48,7 +59,22 @@ def validate(report: CaseReport, window: EvidenceWindow) -> Validation:
             valid += 1
     if not report.evidence:
         errors.append("report cites no evidence")
+    errors.extend(_ticks_written_as_dollars(report, window))
     return Validation(len(report.evidence), valid, errors)
+
+
+def _ticks_written_as_dollars(report: CaseReport, window: EvidenceWindow) -> list[str]:
+    ticks = {row.price for row in window.rows if row.price is not None}
+    errors = []
+    for field in ("summary", "behavior_narrative"):
+        for match in DOLLAR_AMOUNT.finditer(getattr(report, field)):
+            amount = match.group(1).replace(",", "")
+            if "." not in amount and int(amount) in ticks:
+                errors.append(
+                    f"{field}: ${amount} is a tick price; write it in dollars "
+                    f"(${dollars(int(amount))})"
+                )
+    return errors
 
 
 def _best_match_problems(

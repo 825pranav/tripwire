@@ -92,20 +92,33 @@ def header(headers: Headers, name: str) -> bytes | None:
 class SymbolReorderer:
     """Releases events in per-symbol `seq` order, buffering any that arrive early.
 
-    `run` is the simulator's start time, so runs compare numerically. A run's stream starts
-    at seq 0, unless the first message seen is already far into the run (a consumer
-    joining mid-run), in which case it starts there. A newer run (the simulator
-    restarted) starts over, and messages from older runs still draining from other topics
-    are dropped. If the
-    buffer for a symbol grows past `max_pending` (a message that will never come), it
-    skips ahead to the oldest buffered event rather than stalling.
+    Each event type comes from its own topic (a "source"), and within a source a symbol's
+    messages arrive in seq order. `run` is the simulator's start time, so runs compare
+    numerically; a newer run (the simulator restarted) starts over, and messages from
+    older runs still draining from other topics are dropped.
+
+    Where a run's stream starts for this consumer:
+    - at seq 0 as soon as it arrives (the consumer saw the run from the beginning);
+    - otherwise the consumer joined mid-run (a restart resuming from committed offsets,
+      or a new group starting at the latest offset). Each source then resumes at its own
+      first seq, so it waits until every source has delivered a message and starts at the
+      highest of those first seqs, the earliest point from which no source has a gap.
+      If a source stays silent for `join_cap` buffered events, it starts without it.
+
+    If the buffer for a symbol grows past `max_pending` (a message that will never come),
+    it skips ahead to the oldest buffered event rather than stalling.
     """
 
-    def __init__(self, max_pending: int = 1_000_000) -> None:
+    def __init__(
+        self, sources: int = len(EVENT_TOPICS), max_pending: int = 1_000_000, join_cap: int = 10_000
+    ) -> None:
+        self.sources = sources
         self.max_pending = max_pending
-        self.expected: dict[str, int] = {}
+        self.join_cap = join_cap
+        self.expected: dict[str, int | None] = {}  # None while joining
         self.run: dict[str, int] = {}
         self.pending: dict[str, dict[int, Event]] = {}
+        self.firsts: dict[str, dict[type, int]] = {}  # first seq seen per source, joining
 
     def push(self, symbol: str, run: bytes, seq: int, event: Event) -> list[Event]:
         """Add one event; return every event that is now ready, in order."""
@@ -115,15 +128,30 @@ class SymbolReorderer:
             return []
         if run_id != current:
             self.run[symbol] = run_id
-            self.expected[symbol] = 0 if seq < self.max_pending else seq
+            self.expected[symbol] = None
             self.pending[symbol] = {}
+            self.firsts[symbol] = {}
         expected = self.expected[symbol]
-        if seq < expected:
-            return []  # duplicate, or older than where this consumer joined
         pending = self.pending[symbol]
-        pending[seq] = event
-        if len(pending) > self.max_pending:
-            expected = min(pending)
+        if expected is None:
+            firsts = self.firsts[symbol]
+            firsts.setdefault(type(event), seq)
+            pending[seq] = event
+            if 0 in pending:
+                expected = 0
+            elif len(firsts) >= self.sources or len(pending) >= self.join_cap:
+                expected = max(firsts.values())
+                for older in [s for s in pending if s < expected]:
+                    del pending[older]
+            else:
+                return []
+            del self.firsts[symbol]
+        else:
+            if seq < expected:
+                return []  # duplicate, or older than where this consumer joined
+            pending[seq] = event
+            if len(pending) > self.max_pending:
+                expected = min(pending)
         ready = []
         while expected in pending:
             ready.append(pending.pop(expected))

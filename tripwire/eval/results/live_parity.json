@@ -1,0 +1,19 @@
+{
+  "sim_seed": 42,
+  "day": 6,
+  "events": 327446,
+  "orders_in_process": 142660,
+  "orders_stored": 142660,
+  "rules": {
+    "in_process": 11,
+    "live": 11,
+    "same": true
+  },
+  "ml": {
+    "in_process": 12,
+    "live": 12,
+    "same": true
+  },
+  "only_in_process": [],
+  "only_live": []
+}

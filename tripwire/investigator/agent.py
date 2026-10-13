@@ -20,7 +20,7 @@ import ollama
 from tripwire.investigator.evidence import EvidenceRow, EvidenceWindow
 from tripwire.investigator.regulations import DISCLAIMER, Regulation, regulations_for
 from tripwire.investigator.schema import CaseReport, EvidenceItem, report_json_schema
-from tripwire.investigator.validator import Validation, validate
+from tripwire.investigator.validator import Validation, dollars, validate
 
 Message = dict[str, str]
 
@@ -30,7 +30,10 @@ report about one alert.
 Rules:
 - Use ONLY the evidence table. Every evidence entry must copy order_id, event, t_ms, side, \
 qty and price exactly from one table row. Never cite an order that is not in the table.
-- Prices are integer ticks (1 tick = $0.01). t_ms is milliseconds after the window start.
+- The price column is integer ticks (1 tick = $0.01) and is what evidence entries copy. \
+The usd column is the same price in dollars: in the summary and narrative always write \
+prices in dollars as shown there (e.g. $99.27), never the tick number. t_ms is \
+milliseconds after the window start.
 - Describe what the account did and why it matches (or does not match) the alert type. \
 Mention legitimate explanations if the evidence allows them.
 - Do not cite laws or regulations; they are attached separately.
@@ -98,11 +101,11 @@ class CaseResult(msgspec.Struct, frozen=True):
 
 
 def evidence_table(rows: list[EvidenceRow]) -> str:
-    lines = ["order_id | event | t_ms | side | qty | price | account | detail"]
+    lines = ["order_id | event | t_ms | side | qty | price | usd | account | detail"]
     for r in rows:
-        price = "null" if r.price is None else str(r.price)
+        price, usd = ("null", "market") if r.price is None else (str(r.price), dollars(r.price))
         lines.append(
-            f"{r.order_id} | {r.event} | {r.t_ms} | {r.side} | {r.qty} | {price} | "
+            f"{r.order_id} | {r.event} | {r.t_ms} | {r.side} | {r.qty} | {price} | {usd} | "
             f"{r.account} | {r.detail}"
         )
     return "\n".join(lines)

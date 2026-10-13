@@ -23,6 +23,7 @@ from tripwire.common.kafka import ALL_TOPICS, EVENT_TOPICS
 MAX_LAG = 5_000  # messages per consumer group
 HEARTBEAT_MAX_AGE_S = 15
 SERVICES = ("sim", "detectors", "investigator", "api")
+DETECTOR_MAX_BEHIND_SIM_MIN = 2  # heartbeats are 5 s apart, 25 simulated s at speed 5
 ALERT_SILENCE_SIM_MIN = 45  # while the sim runs, expect an alert at least this often
 UNVERIFIED_MAX_SHARE = 0.5
 MINUTE_NS = 60 * 1_000_000_000
@@ -105,6 +106,23 @@ def check_heartbeat(beats: dict[str, dict[str, Any]], service: str) -> Result:
     return ("PASS" if age < HEARTBEAT_MAX_AGE_S else "FAIL"), detail
 
 
+def check_detector_progress(beats: dict[str, dict[str, Any]]) -> Result:
+    """A fresh heartbeat only proves the loop runs; this checks events actually get through.
+
+    Compares the event time the detectors have processed with the simulator's.
+    """
+    sim, det = beats.get("sim"), beats.get("detectors")
+    if sim is None or sim["last_event_ns"] is None:
+        return "SKIP", "simulator has not produced events"
+    if det is None:
+        return "FAIL", "no detector heartbeat"
+    if det["last_event_ns"] is None:
+        return "FAIL", f"simulator produced {sim['processed']:,} events, detectors processed none"
+    behind = max(0, int(sim["last_event_ns"]) - int(det["last_event_ns"])) / MINUTE_NS
+    status = "PASS" if behind <= DETECTOR_MAX_BEHIND_SIM_MIN else "FAIL"
+    return status, f"{behind:.1f} simulated min behind the simulator"
+
+
 def check_alert_flow(conn: psycopg.Connection, beats: dict[str, dict[str, Any]]) -> Result:
     sim = beats.get("sim")
     if sim is None or float(sim["age_s"]) >= HEARTBEAT_MAX_AGE_S or sim["last_event_ns"] is None:
@@ -169,6 +187,7 @@ def run_checks(settings: Settings) -> list[tuple[str, str, str]]:
         beats = heartbeats(conn)
         for service in SERVICES:
             run(f"heartbeat: {service}", partial(check_heartbeat, beats, service))
+        run("detectors keeping up", lambda: check_detector_progress(beats))
         run("alerts flowing", lambda: check_alert_flow(conn, beats))
         run("investigator queue depth", lambda: check_queue(settings, beats))
         run("unverified report share", lambda: check_unverified(conn))

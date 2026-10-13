@@ -7,8 +7,8 @@
   "session_minutes": 120,
   "events": 6562271,
   "throughput": {
-    "sim_events_per_s": 233087,
-    "detector_events_per_s": 614129
+    "sim_events_per_s": 229186,
+    "detector_events_per_s": 621511
   },
   "methods": {
     "rules": {
@@ -204,13 +204,13 @@
   "citations": {
     "model": "qwen2.5:7b-instruct",
     "reports": 10,
-    "citations": 68,
-    "valid_citations": 67,
-    "accuracy": 0.9853,
-    "verified_reports": 9,
-    "verified_first_try": 9,
-    "unverified_reports": 1,
+    "citations": 89,
+    "valid_citations": 89,
+    "accuracy": 1.0,
+    "verified_reports": 10,
+    "verified_first_try": 10,
+    "unverified_reports": 0,
     "fallback_reports": 0,
-    "median_latency_ms": 38165
+    "median_latency_ms": 50537
   }
 }

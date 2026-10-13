@@ -4,6 +4,7 @@ import { getJson, type Status } from "../api";
 const SERVICES = ["sim", "detectors", "investigator", "api"];
 const AMBER_AFTER_S = 15;
 const RED_AFTER_S = 60;
+const DETECTORS_MAX_BEHIND_MIN = 2; // simulated minutes, same limit as `make doctor`
 
 type Light = "green" | "amber" | "red";
 
@@ -44,6 +45,11 @@ export function StatusBar({ wsConnected }: { wsConnected: boolean }) {
   const investigator = services.get("investigator");
   const queue = investigator?.details?.queue_depth as number | undefined;
   const cap = investigator?.details?.queue_cap as number | undefined;
+  // A fresh heartbeat only means the loop runs; also check events get through.
+  const simNs = services.get("sim")?.last_event_ns;
+  const detNs = services.get("detectors")?.last_event_ns;
+  const behindMin = simNs != null ? Math.max(0, simNs - (detNs ?? 0)) / 60e9 : 0;
+  const detectorsStalled = simNs != null && (detNs == null || behindMin > DETECTORS_MAX_BEHIND_MIN);
 
   return (
     <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-b border-zinc-800 bg-zinc-900 px-4 py-1.5 font-mono text-[11px]">
@@ -55,8 +61,14 @@ export function StatusBar({ wsConnected }: { wsConnected: boolean }) {
       <span className="h-3 w-px bg-zinc-700" />
       {SERVICES.map((name) => {
         const s = services.get(name);
-        const light: Light = !s ? "red" : s.age_s < AMBER_AFTER_S ? "green" : s.age_s < RED_AFTER_S ? "amber" : "red";
-        return <Pill key={name} light={light} label={name} detail={s ? `${s.processed.toLocaleString()}` : "down"} />;
+        let light: Light = !s ? "red" : s.age_s < AMBER_AFTER_S ? "green" : s.age_s < RED_AFTER_S ? "amber" : "red";
+        let detail = s ? s.processed.toLocaleString() : "down";
+        if (name === "investigator" && s) detail = `${Number(s.details?.reports ?? 0).toLocaleString()} reports`;
+        if (name === "detectors" && s && detectorsStalled) {
+          light = "red";
+          detail = detNs == null ? "no events processed" : `${behindMin.toFixed(1)} sim min behind`;
+        }
+        return <Pill key={name} light={light} label={name} detail={detail} />;
       })}
       <span className="h-3 w-px bg-zinc-700" />
       {status &&

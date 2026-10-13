@@ -74,7 +74,7 @@ export function CaseView({ alertId, back }: { alertId: string; back: () => void 
   };
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-12 gap-2 overflow-auto p-2">
+    <div className="grid h-full min-h-0 grid-cols-12 content-start gap-2 overflow-auto p-2">
       <div className="col-span-12 flex items-center gap-3">
         <button onClick={back} className="rounded bg-zinc-800 px-2 py-1 font-mono text-[11px] text-zinc-300 hover:bg-zinc-700">
           ← back

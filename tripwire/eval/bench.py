@@ -26,7 +26,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
-from confluent_kafka import Consumer, TopicPartition
+from confluent_kafka import Consumer, KafkaError, KafkaException, TopicPartition
 
 from tripwire.common.codec import encode
 from tripwire.common.config import load_settings
@@ -154,6 +154,22 @@ def _produce(
     producer.flush()
 
 
+def _end_offset(consumer: Consumer, tp: TopicPartition, wait_s: float = 30) -> int:
+    """High watermark of a partition. Topics created a moment ago may not have a leader yet."""
+    deadline = time.monotonic() + wait_s
+    while True:
+        try:
+            return int(consumer.get_watermark_offsets(tp, timeout=10)[1])
+        except KafkaException as exc:
+            retriable = exc.args[0].code() in (
+                KafkaError.NOT_LEADER_FOR_PARTITION,
+                KafkaError.LEADER_NOT_AVAILABLE,
+            )
+            if not retriable or time.monotonic() > deadline:
+                raise
+            time.sleep(0.5)
+
+
 def bench_kafka(
     events: list[Event], rate: float | None, label: str, cpu: int | None
 ) -> dict[str, Any]:
@@ -175,7 +191,7 @@ def bench_kafka(
     partitions = []
     for topic in EVENT_TOPICS:
         for p in metadata.topics[topic].partitions:
-            _, high = consumer.get_watermark_offsets(TopicPartition(topic, p), timeout=10)
+            high = _end_offset(consumer, TopicPartition(topic, p))
             partitions.append(TopicPartition(topic, p, high))
     consumer.assign(partitions)
 

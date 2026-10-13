@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { clock, getJson, price, type Book, type TradeEvent } from "../api";
+import { clock, getJson, price, type Alert, type Book, type LiveAlert, type TradeEvent } from "../api";
 import { ScoreBar, TypeBadge } from "../components/Badges";
 import { DepthLadder } from "../components/DepthLadder";
 import { Panel } from "../components/Panel";
@@ -14,6 +14,14 @@ interface MarketResponse {
 export function LiveView({ live, symbols, open }: { live: LiveState; symbols: string[]; open: (alertId: string) => void }) {
   const [symbol, setSymbol] = useState(symbols[0] ?? "");
   const [history, setHistory] = useState<MarketResponse | null>(null);
+  const [recentAlerts, setRecentAlerts] = useState<LiveAlert[]>([]);
+
+  // Alerts raised before the page was opened; live ones are added on top.
+  useEffect(() => {
+    getJson<Alert[]>("/api/alerts?limit=30")
+      .then((rows) => setRecentAlerts(rows.map(({ emitted_ts_ns, ...a }) => ({ ...a, emitted_ts: emitted_ts_ns }))))
+      .catch(() => setRecentAlerts([]));
+  }, []);
 
   useEffect(() => {
     if (!symbol && symbols[0]) setSymbol(symbols[0]);
@@ -35,7 +43,19 @@ export function LiveView({ live, symbols, open }: { live: LiveState; symbols: st
   const book: Book | null =
     live.books[symbol] ??
     (history?.book ? { ts: history.book.ts_ns, symbol, bids: history.book.bids, asks: history.book.asks } : null);
-  const tape = [...liveTrades].reverse().slice(0, 60);
+  const tape = useMemo(() => {
+    const past = history?.trades ?? [];
+    const lastPast = past.length ? past[past.length - 1].ts_ns : 0;
+    const merged = [
+      ...past.slice(-60).map((t) => ({ ...t, ts: t.ts_ns })),
+      ...liveTrades.filter((t) => t.ts > lastPast),
+    ];
+    return merged.reverse().slice(0, 60);
+  }, [history, liveTrades]);
+  const alerts = useMemo(() => {
+    const seen = new Set(live.alerts.map((a) => a.alert_id));
+    return [...live.alerts, ...recentAlerts.filter((a) => !seen.has(a.alert_id))].slice(0, 50);
+  }, [live.alerts, recentAlerts]);
   const last = points.length ? points[points.length - 1].price : null;
   const first = points.length ? points[0].price : null;
 
@@ -85,8 +105,8 @@ export function LiveView({ live, symbols, open }: { live: LiveState; symbols: st
               </tr>
             </thead>
             <tbody>
-              {tape.map((t) => (
-                <tr key={t.trade_id} className="border-t border-zinc-800/60">
+              {tape.map((t, i) => (
+                <tr key={`${t.ts}-${i}`} className="border-t border-zinc-800/60">
                   <td className="py-0.5 text-zinc-500">{clock(t.ts)}</td>
                   <td className={t.aggressor_side === "B" ? "text-emerald-400" : "text-rose-400"}>{price(t.price)}</td>
                   <td className="text-right">{t.qty.toLocaleString()}</td>
@@ -101,9 +121,9 @@ export function LiveView({ live, symbols, open }: { live: LiveState; symbols: st
         </Panel>
       </div>
 
-      <Panel title="Alert feed" className="col-span-3" right={<span className="font-mono text-[10px] text-zinc-500">{live.alerts.length} live</span>}>
+      <Panel title="Alert feed" className="col-span-3" right={<span className="font-mono text-[10px] text-zinc-500">{alerts.length} recent</span>}>
         <ul className="flex flex-col gap-1">
-          {live.alerts.map((a) => (
+          {alerts.map((a) => (
             <li key={a.alert_id}>
               <button onClick={() => open(a.alert_id)} className="w-full rounded border border-zinc-800 bg-zinc-900 p-2 text-left hover:border-zinc-600">
                 <div className="flex items-center justify-between">
@@ -118,7 +138,7 @@ export function LiveView({ live, symbols, open }: { live: LiveState; symbols: st
             </li>
           ))}
         </ul>
-        {!live.alerts.length && <Empty text="alerts appear here as detectors fire" />}
+        {!alerts.length && <Empty text="alerts appear here as detectors fire" />}
       </Panel>
     </div>
   );

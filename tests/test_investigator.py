@@ -144,3 +144,14 @@ def test_alert_window_padding(window: EvidenceWindow) -> None:
     alert: Alert = window.alert
     assert window.start_ns == alert.window_start_ns - 30_000_000_000
     assert all(r.t_ms >= 0 for r in window.rows)
+
+
+def test_validator_rejects_tick_prices_written_as_dollars(window: EvidenceWindow) -> None:
+    item = item_from_row(window, 0)
+    assert item.price is not None
+    wrong = CaseReport(f"sold at ${item.price}", "n", [item], "high", "monitor")
+    check = validate(wrong, window)
+    assert not check.ok and check.valid == 1
+    assert f"${item.price / 100:.2f}" in check.errors[0]
+    right = CaseReport(f"sold at ${item.price / 100:.2f}", "n", [item], "high", "monitor")
+    assert validate(right, window).ok

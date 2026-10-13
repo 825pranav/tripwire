@@ -5,6 +5,7 @@ from scenario import BUY, SELL, Scenario
 
 from tripwire.common.alerts import Alert
 from tripwire.common.events import Event
+from tripwire.detectors.suite import DetectorSuite
 from tripwire.ml.features import FEATURES, WindowFeatures, WindowRow
 from tripwire.ml.fusion import fuse
 from tripwire.ml.model import AnomalyModel, load_model
@@ -127,3 +128,22 @@ def test_fast_forest_matches_sklearn_scores() -> None:
     rng = np.random.default_rng(0)
     x = np.abs(rng.normal(1.0, 1.5, size=(400, len(FEATURES))))
     np.testing.assert_allclose(model.raw(x), -model.forest.score_samples(x), rtol=0, atol=1e-12)
+
+
+def test_a_day_scores_the_same_after_the_previous_day() -> None:
+    # The live services run day after day on one pipeline, the eval scores each day
+    # fresh; nothing may carry over between sessions (e.g. the overnight price gap).
+    config = SimConfig(session_minutes=20)
+    population = build_population(config)
+    reference = reference_data(config, population)
+    day0: list[Event] = []
+    day1: list[Event] = []
+    simulate_day(config, 11, 0, day0.append, population=population)
+    simulate_day(config, 12, 1, day1.append, population=population)
+    fresh_rules = DetectorSuite(reference).run(day1)
+    fresh_ml = MLScorer(load_model(), reference).run(day1)
+    rules = DetectorSuite(reference).run(day0 + day1)
+    ml = MLScorer(load_model(), reference).run(day0 + day1)
+    start = day1[0].ts
+    assert [a for a in rules if a.window_start_ns >= start] == fresh_rules
+    assert [a for a in ml if a.window_start_ns >= start] == fresh_ml

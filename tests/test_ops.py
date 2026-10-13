@@ -5,10 +5,10 @@ import random
 import pytest
 
 from tripwire.common.config import Settings, load_settings
-from tripwire.common.events import BookSnapshot, Event
+from tripwire.common.events import BookSnapshot, Event, Side, Trade
 from tripwire.common.kafka import SymbolReorderer, header
 from tripwire.common.logs import JsonFormatter
-from tripwire.ops.doctor import check_heartbeat
+from tripwire.ops.doctor import check_detector_progress, check_heartbeat
 
 
 def snap(ts: int, symbol: str = "AAA") -> Event:
@@ -38,12 +38,36 @@ def test_reorderer_waits_for_the_start_of_a_new_run() -> None:
 
 
 def test_reorderer_joins_mid_stream_and_drops_older_or_duplicate() -> None:
-    reorderer = SymbolReorderer(max_pending=100)
+    reorderer = SymbolReorderer(sources=1, max_pending=100)
     assert [e.ts for e in reorderer.push("AAA", b"5", 500, snap(500))] == [500]
     assert reorderer.push("AAA", b"5", 499, snap(499)) == []
     assert reorderer.push("AAA", b"5", 500, snap(500)) == []
     assert reorderer.push("AAA", b"5", 502, snap(502)) == []
     assert [e.ts for e in reorderer.push("AAA", b"5", 501, snap(501))] == [501, 502]
+
+
+def trade(ts: int) -> Event:
+    return Trade(ts, ts, "AAA", 100, 1, Side.BUY, 1, 2, "a", "b")
+
+
+def test_reorderer_resumes_after_a_restart_from_committed_offsets() -> None:
+    # A restarted consumer resumes each topic at its own committed offset: here snapshots
+    # from seq 1000 and trades from seq 1003 (trades 1000-1002 were already processed).
+    # The stream can only be gap-free from 1003, the highest first seq over the sources.
+    reorderer = SymbolReorderer(sources=2, max_pending=100)
+    assert reorderer.push("AAA", b"5", 1000, snap(1000)) == []
+    assert reorderer.push("AAA", b"5", 1001, snap(1001)) == []
+    assert reorderer.push("AAA", b"5", 1004, snap(1004)) == []
+    assert [e.ts for e in reorderer.push("AAA", b"5", 1003, trade(1003))] == [1003, 1004]
+    assert reorderer.push("AAA", b"5", 1002, snap(1002)) == []  # before the join point
+    assert [e.ts for e in reorderer.push("AAA", b"5", 1005, trade(1005))] == [1005]
+
+
+def test_reorderer_joins_without_a_silent_source() -> None:
+    reorderer = SymbolReorderer(sources=2, max_pending=100, join_cap=3)
+    assert reorderer.push("AAA", b"5", 700, snap(700)) == []
+    assert reorderer.push("AAA", b"5", 701, snap(701)) == []
+    assert [e.ts for e in reorderer.push("AAA", b"5", 702, snap(702))] == [700, 701, 702]
 
 
 def test_reorderer_resets_on_new_run_and_drops_the_old_one() -> None:
@@ -92,3 +116,14 @@ def test_doctor_heartbeat_freshness() -> None:
     assert check_heartbeat(beats, "sim")[0] == "PASS"
     assert check_heartbeat(beats, "old")[0] == "FAIL"
     assert check_heartbeat(beats, "missing") == ("FAIL", "no heartbeat")
+
+
+def test_doctor_fails_when_detectors_process_nothing() -> None:
+    minute = 60 * 1_000_000_000
+    sim = {"age_s": 1.0, "processed": 5_000, "last_event_ns": 100 * minute}
+    stalled = {"age_s": 1.0, "processed": 0, "last_event_ns": None}
+    assert check_detector_progress({"sim": sim, "detectors": stalled})[0] == "FAIL"
+    behind = {"age_s": 1.0, "processed": 10, "last_event_ns": 90 * minute}
+    assert check_detector_progress({"sim": sim, "detectors": behind})[0] == "FAIL"
+    current = {"age_s": 1.0, "processed": 4_990, "last_event_ns": 100 * minute - 10**9}
+    assert check_detector_progress({"sim": sim, "detectors": current})[0] == "PASS"

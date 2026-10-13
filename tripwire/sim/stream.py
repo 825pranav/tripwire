@@ -20,6 +20,7 @@ from tripwire.common.kafka import ensure_topics, make_producer, topic_for
 from tripwire.common.logs import setup_logging
 from tripwire.common.reference import write_reference
 from tripwire.ops.heartbeat import Heartbeat
+from tripwire.ops.shutdown import exit_on_sigterm
 from tripwire.sim.config import SimConfig
 from tripwire.sim.core import ID_STRIDE
 from tripwire.sim.day import simulate_day
@@ -60,14 +61,19 @@ def main() -> None:
         heartbeat.record(1, event.ts)
         heartbeat.maybe_write(day=day, speed=settings.sim_speed, run_started_ns=started[0])
 
+    exit_on_sigterm()
     log.info("starting", extra={"seed": settings.sim_seed, "speed": settings.sim_speed, "day": day})
-    while True:
-        seed = settings.sim_seed * 100_000 + day
-        result = simulate_day(config, seed, day, sink, settings.sim_speed, population)
-        producer.flush()
-        write_labels(labels_path(seed, day), result.episodes)
-        log.info("session finished", extra={"day": day, "events": result.event_count})
-        day += 1
+    try:
+        while True:
+            seed = settings.sim_seed * 100_000 + day
+            result = simulate_day(config, seed, day, sink, settings.sim_speed, population)
+            producer.flush()
+            write_labels(labels_path(seed, day), result.episodes)
+            log.info("session finished", extra={"day": day, "events": result.event_count})
+            day += 1
+    finally:
+        log.info("stopping")
+        producer.flush(5)
 
 
 if __name__ == "__main__":

@@ -26,6 +26,7 @@ from tripwire.common.reference import load_reference
 from tripwire.detectors.pipeline import DetectionPipeline
 from tripwire.ml.model import load_model
 from tripwire.ops.heartbeat import Heartbeat
+from tripwire.ops.shutdown import exit_on_sigterm
 
 FLUSH_INTERVAL_S = 0.5
 GROUP = "detectors"
@@ -48,36 +49,50 @@ def main() -> None:
     outbox: list[Alert] = []
     alert_count = 0
     last_flush = time.monotonic()
-    log.info("consuming", extra={"topics": EVENT_TOPICS})
-    while True:
-        for msg in consumer.consume(num_messages=500, timeout=0.05):
-            if msg.error():
-                log.warning("kafka error", extra={"error": str(msg.error())})
-                continue
-            released, alerts = pipeline.handle(msg.value(), msg.headers())
-            outbox.extend(alerts)
-            for ready in released:
-                writer.add(ready)
-            if released:
-                heartbeat.record(len(released), released[-1].ts)
 
-        if writer.pending() and (
-            outbox or writer.pending() > 5_000 or time.monotonic() - last_flush > FLUSH_INTERVAL_S
-        ):
-            for alert in outbox:
-                writer.add_alert(alert)
-            writer.flush()
-            last_flush = time.monotonic()
-            for alert in outbox:
-                producer.produce(ALERTS, key=alert.symbol, value=encoder.encode(alert))
-                log.info(
-                    "alert",
-                    extra={"alert_id": alert.alert_id, "type": alert.type, "score": alert.score},
-                )
-            alert_count += len(outbox)
-            outbox.clear()
-        producer.poll(0)
-        heartbeat.maybe_write(alerts=alert_count, reorder_buffer=pipeline.reorderer.buffered())
+    def flush() -> None:
+        nonlocal alert_count, last_flush
+        for alert in outbox:
+            writer.add_alert(alert)
+        writer.flush()
+        last_flush = time.monotonic()
+        for alert in outbox:
+            producer.produce(ALERTS, key=alert.symbol, value=encoder.encode(alert))
+            log.info(
+                "alert",
+                extra={"alert_id": alert.alert_id, "type": alert.type, "score": alert.score},
+            )
+        alert_count += len(outbox)
+        outbox.clear()
+
+    exit_on_sigterm()
+    log.info("consuming", extra={"topics": EVENT_TOPICS})
+    try:
+        while True:
+            for msg in consumer.consume(num_messages=500, timeout=0.05):
+                if msg.error():
+                    log.warning("kafka error", extra={"error": str(msg.error())})
+                    continue
+                released, alerts = pipeline.handle(msg.value(), msg.headers())
+                outbox.extend(alerts)
+                for ready in released:
+                    writer.add(ready)
+                if released:
+                    heartbeat.record(len(released), released[-1].ts)
+
+            if writer.pending() and (
+                outbox
+                or writer.pending() > 5_000
+                or time.monotonic() - last_flush > FLUSH_INTERVAL_S
+            ):
+                flush()
+            producer.poll(0)
+            heartbeat.maybe_write(alerts=alert_count, reorder_buffer=pipeline.reorderer.buffered())
+    finally:
+        log.info("stopping")
+        consumer.close()  # leave the group now, so a restart gets its partitions at once
+        flush()
+        producer.flush(5)
 
 
 if __name__ == "__main__":

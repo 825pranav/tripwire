@@ -10,7 +10,9 @@ Features (one row per window with any activity):
 - median_lifetime_s:    log(1 + median seconds from entry to cancel); window length if none
 - size_asymmetry:       log(1 + largest order / the account's median order size)
 - price_impact_ticks:   symbol move over the window in the direction of the account's net
-                        aggressive flow, scaled by its share of the symbol's volume
+                        aggressive flow, scaled by its share of the symbol's volume (from
+                        the previous trade in the same session, so the overnight gap
+                        never counts)
 - end_of_session_share: the account's aggressive share of volume in the session's last
                         5 minutes (0 outside them)
 - self_trade_ratio:     share of its traded volume where the counterparty has the same
@@ -111,7 +113,7 @@ class WindowFeatures:
         self.window_end: dict[str, int] = {}
         self.accs: dict[str, dict[str, _Acc]] = {}  # symbol -> account -> accumulator
         self.symbols: dict[str, _SymbolWindow] = {}
-        self.last_price: dict[str, int] = {}
+        self.last_price: dict[str, tuple[int, int]] = {}  # symbol -> (session open, price)
         # order_id -> [accepted_ts, remaining qty]
         self.live: dict[int, list[int]] = {}
         self.session_open = 0  # cached session bounds of the current trading day
@@ -173,15 +175,18 @@ class WindowFeatures:
 
     def _on_trade(self, trade: Trade) -> None:
         symbol = trade.symbol
-        sym = self.symbols.get(symbol)
-        if sym is None:
-            sym = self.symbols[symbol] = _SymbolWindow(self.last_price.get(symbol, trade.price))
-        sym.last_price = trade.price
-        sym.volume += trade.qty
-        self.last_price[symbol] = trade.price
         if not self.session_open <= trade.ts < self.close_end:
             self.session_open, self.close_end = self.calendar.bounds(trade.ts)
             self.close_start = self.close_end - CLOSE_PERIOD_NS
+        sym = self.symbols.get(symbol)
+        if sym is None:
+            session, price = self.last_price.get(symbol, (self.session_open, trade.price))
+            sym = self.symbols[symbol] = _SymbolWindow(
+                price if session == self.session_open else trade.price
+            )
+        sym.last_price = trade.price
+        sym.volume += trade.qty
+        self.last_price[symbol] = (self.session_open, trade.price)
         in_close = self.close_start <= trade.ts < self.close_end
         if in_close:
             sym.close_volume += trade.qty

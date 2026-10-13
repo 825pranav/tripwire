@@ -34,8 +34,11 @@ gives one codebase with two paths: a streaming demo and a fast, deterministic ev
 
 ## Setup
 
-Requirements: Docker, [uv](https://docs.astral.sh/uv/), Ollama, Node 22 (only for
-frontend development).
+Requirements: Docker, [uv](https://docs.astral.sh/uv/), Ollama, GNU make (on Windows,
+e.g. `winget install ezwinports.make`, or run the commands in the Makefile by hand), Node
+22 (only for frontend development). The services reach Ollama on the host through
+`host.docker.internal`; on Linux, start Ollama with `OLLAMA_HOST=0.0.0.0` so containers
+can connect.
 
 ```bash
 ollama pull qwen2.5:7b-instruct      # any Ollama model works: set OLLAMA_MODEL
@@ -47,6 +50,7 @@ make doctor                          # pass/fail health table for the running sy
 | target | what it does |
 |---|---|
 | `make up` / `make sim` / `make down` | start the stack / start the realtime simulator / stop |
+| `make doctor` / `make parity` | health table / compare the last streamed day's alerts with an in-process replay |
 | `make eval` | rules, ML, union and fusion on 10 seeded days, plus LLM citation accuracy |
 | `make bench` | engine, detector and end-to-end Kafka throughput, alert latency |
 | `make check` | ruff, mypy, fast tests, determinism and leakage checks, 1-day smoke eval vs baseline |
@@ -114,7 +118,16 @@ model, and are labelled general reference, not legal advice.
 **Runtime health.** Compose healthchecks gate startup. Every service upserts a heartbeat
 (last event time, processed count) every 5 s. `/ready` checks Kafka topics, Postgres and
 that the Ollama model is pulled. `make doctor` and the dashboard status bar show
-heartbeats, consumer lag, the LLM queue depth and the share of unverified reports.
+heartbeats, consumer lag, the LLM queue depth and the share of unverified reports. They
+also compare the event time the detectors have reached with the simulator's: a fresh
+heartbeat only proves a loop is running, not that events get through.
+
+**Restarts.** Services handle SIGTERM: they leave the Kafka consumer group and flush what
+they hold, so a restarted service gets its partitions back within seconds. A restarted
+detector service resumes each topic at its committed offset and starts each symbol's
+stream at the first sequence number from which no topic has a gap. The investigator
+re-queues stored alerts that have no case report yet. `make parity` re-simulates the
+last day the stack streamed and checks that the live alerts match the in-process ones.
 
 ## Results
 
@@ -140,10 +153,15 @@ What this shows:
   union recall 0.881 vs 0.863, at the cost of precision.
 - **Fusion** keeps most of that recall with fewer false positives than union.
 
-**LLM case reports** (`qwen2.5:7b-instruct`, 10 sampled alerts): 67 of 68 cited orders
-matched the stored events. 9 reports were verified on the first try and 1 stayed
-unverified after the retry; median 38 s per report on this laptop. A run during phase 6
-gave 71/72, so expect small run-to-run differences even at temperature 0.
+**Live vs in-process** (`live_parity.json`): a full simulated day streamed through the
+compose stack at 30× (327,446 events) stored all 142,660 orders, and the detector service
+raised exactly the alerts the in-process pipeline raises for the same seed (11 rule, 12 ML).
+
+**LLM case reports** (`qwen2.5:7b-instruct`, 10 sampled alerts, `full_run.json`): 89 of 89
+cited orders matched the stored events and all 10 reports were verified on the first try;
+median 51 s per report on this laptop. Earlier prompt versions gave 67/68 and 71/72, so
+expect small run-to-run differences even at temperature 0. The validator also rejects a
+tick price written as dollars ("$9927" for $99.27), which an earlier version let through.
 
 **Throughput and latency** (`bench.json`, one simulated day of 328,609 events, process
 pinned to one performance core of an i5-13500HX):
