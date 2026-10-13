@@ -23,5 +23,5 @@ Eval over 20 simulated days (seeds 1000-1019, 120-minute sessions, 6,562,271 eve
 | fusion | marking_close | 1.000 | 1.000 | 1.000 | 20 | 20/20 |
 | fusion | overall | 0.694 | 0.856 | 0.767 | 288 | 137/160 |
 
-Throughput (in-process, single thread): simulator 178,407 events/s, detectors 426,235 events/s.
-LLM citation accuracy (qwen2.5:7b-instruct, 10 sampled alerts): 71/72 cited orders valid (0.9861); 9 reports verified (9 on the first try), 1 unverified, 0 fallback; median 39020 ms per report.
+Throughput (in-process, single thread): simulator 233,087 events/s, detectors 614,129 events/s.
+LLM citation accuracy (qwen2.5:7b-instruct, 10 sampled alerts): 67/68 cited orders valid (0.9853); 9 reports verified (9 on the first try), 1 unverified, 0 fallback; median 38165 ms per report.
