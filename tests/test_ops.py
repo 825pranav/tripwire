@@ -30,13 +30,20 @@ def test_reorderer_restores_per_symbol_order_from_shuffled_input() -> None:
     assert reorderer.buffered() == 0
 
 
+def test_reorderer_waits_for_the_start_of_a_new_run() -> None:
+    reorderer = SymbolReorderer(max_pending=100)
+    assert reorderer.push("AAA", b"5", 2, snap(2)) == []  # seq 0 and 1 are on other topics
+    assert reorderer.push("AAA", b"5", 0, snap(0)) == [snap(0)]
+    assert [e.ts for e in reorderer.push("AAA", b"5", 1, snap(1))] == [1, 2]
+
+
 def test_reorderer_joins_mid_stream_and_drops_older_or_duplicate() -> None:
-    reorderer = SymbolReorderer()
-    assert [e.ts for e in reorderer.push("AAA", b"5", 50, snap(50))] == [50]
-    assert reorderer.push("AAA", b"5", 49, snap(49)) == []
-    assert reorderer.push("AAA", b"5", 50, snap(50)) == []
-    assert reorderer.push("AAA", b"5", 52, snap(52)) == []
-    assert [e.ts for e in reorderer.push("AAA", b"5", 51, snap(51))] == [51, 52]
+    reorderer = SymbolReorderer(max_pending=100)
+    assert [e.ts for e in reorderer.push("AAA", b"5", 500, snap(500))] == [500]
+    assert reorderer.push("AAA", b"5", 499, snap(499)) == []
+    assert reorderer.push("AAA", b"5", 500, snap(500)) == []
+    assert reorderer.push("AAA", b"5", 502, snap(502)) == []
+    assert [e.ts for e in reorderer.push("AAA", b"5", 501, snap(501))] == [501, 502]
 
 
 def test_reorderer_resets_on_new_run_and_drops_the_old_one() -> None:

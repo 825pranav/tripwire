@@ -36,6 +36,7 @@ class _Cross(NamedTuple):
 
 class WashDetector:
     name = "wash"
+    wants: tuple[type, ...] = (Trade,)
 
     def __init__(self, config: WashConfig, owner_of: dict[str, str]) -> None:
         self.config = config

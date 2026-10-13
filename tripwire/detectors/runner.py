@@ -1,8 +1,8 @@
 """Detector service: a thin Kafka runner around the pure detectors and the ML scorer.
 
-Consumes the four event topics, restores per-symbol order, feeds every event to the rule
-suite and the ML scorer, stores events and alerts in Postgres, then publishes the alerts
-to the `alerts` topic (after they are committed, so readers always find them stored).
+Consumes the four event topics and feeds them through the `DetectionPipeline` (per-symbol
+reordering, rule suite, ML scorer), stores events and alerts in Postgres, then publishes
+the alerts to `alerts` (after they are committed, so readers always find them stored).
 """
 
 from __future__ import annotations
@@ -12,23 +12,19 @@ import time
 import msgspec
 
 from tripwire.common.alerts import Alert
-from tripwire.common.codec import decode
 from tripwire.common.config import load_settings
 from tripwire.common.db import EventWriter, apply_schema, connect
 from tripwire.common.kafka import (
     ALERTS,
     EVENT_TOPICS,
-    SymbolReorderer,
     ensure_topics,
-    header,
     make_consumer,
     make_producer,
 )
 from tripwire.common.logs import setup_logging
 from tripwire.common.reference import load_reference
-from tripwire.detectors.suite import DetectorSuite
+from tripwire.detectors.pipeline import DetectionPipeline
 from tripwire.ml.model import load_model
-from tripwire.ml.scorer import MLScorer
 from tripwire.ops.heartbeat import Heartbeat
 
 FLUSH_INTERVAL_S = 0.5
@@ -43,10 +39,7 @@ def main() -> None:
     apply_schema(conn)
     heartbeat = Heartbeat(conn, GROUP)
     writer = EventWriter(conn)
-    reference = load_reference()
-    suite = DetectorSuite(reference)
-    scorer = MLScorer(load_model(), reference)
-    reorderer = SymbolReorderer()
+    pipeline = DetectionPipeline(load_reference(), load_model())
     consumer = make_consumer(settings.kafka_bootstrap, GROUP)
     consumer.subscribe(list(EVENT_TOPICS))
     producer = make_producer(settings.kafka_bootstrap)
@@ -57,21 +50,16 @@ def main() -> None:
     last_flush = time.monotonic()
     log.info("consuming", extra={"topics": EVENT_TOPICS})
     while True:
-        for msg in consumer.consume(num_messages=1000, timeout=0.2):
+        for msg in consumer.consume(num_messages=500, timeout=0.05):
             if msg.error():
                 log.warning("kafka error", extra={"error": str(msg.error())})
                 continue
-            value = msg.value()
-            run = header(msg.headers(), "run")
-            seq = header(msg.headers(), "seq")
-            if value is None or run is None or seq is None:
-                continue
-            event = decode(value)
-            for ready in reorderer.push(event.symbol, run, int(seq), event):
-                outbox.extend(suite.process(ready))
-                outbox.extend(scorer.process(ready))
+            released, alerts = pipeline.handle(msg.value(), msg.headers())
+            outbox.extend(alerts)
+            for ready in released:
                 writer.add(ready)
-                heartbeat.record(1, ready.ts)
+            if released:
+                heartbeat.record(len(released), released[-1].ts)
 
         if writer.pending() and (
             outbox or writer.pending() > 5_000 or time.monotonic() - last_flush > FLUSH_INTERVAL_S
@@ -89,7 +77,7 @@ def main() -> None:
             alert_count += len(outbox)
             outbox.clear()
         producer.poll(0)
-        heartbeat.maybe_write(alerts=alert_count, reorder_buffer=reorderer.buffered())
+        heartbeat.maybe_write(alerts=alert_count, reorder_buffer=pipeline.reorderer.buffered())
 
 
 if __name__ == "__main__":

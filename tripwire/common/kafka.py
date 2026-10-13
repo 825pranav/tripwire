@@ -53,6 +53,11 @@ def make_consumer(bootstrap: str, group: str, offset_reset: str = "latest") -> C
             "group.id": group,
             "auto.offset.reset": offset_reset,
             "enable.auto.commit": True,
+            # Small per-partition fetches interleave the four topics when catching up on a
+            # backlog, which keeps the per-symbol reorder buffer small.
+            "max.partition.fetch.bytes": 65_536,
+            # Do not let the broker hold a fetch for up to 500 ms waiting for more data.
+            "fetch.wait.max.ms": 20,
         }
     )
 
@@ -87,15 +92,16 @@ def header(headers: Headers, name: str) -> bytes | None:
 class SymbolReorderer:
     """Releases events in per-symbol `seq` order, buffering any that arrive early.
 
-    `run` is the simulator's start time, so runs compare numerically. The first message
-    seen for a run sets where that symbol's stream starts (a consumer can join mid-run);
-    a newer run (the simulator restarted) starts over, and messages from older runs that
-    are still draining from other topics are dropped. If the
+    `run` is the simulator's start time, so runs compare numerically. A run's stream starts
+    at seq 0, unless the first message seen is already far into the run (a consumer
+    joining mid-run), in which case it starts there. A newer run (the simulator
+    restarted) starts over, and messages from older runs still draining from other topics
+    are dropped. If the
     buffer for a symbol grows past `max_pending` (a message that will never come), it
     skips ahead to the oldest buffered event rather than stalling.
     """
 
-    def __init__(self, max_pending: int = 10_000) -> None:
+    def __init__(self, max_pending: int = 1_000_000) -> None:
         self.max_pending = max_pending
         self.expected: dict[str, int] = {}
         self.run: dict[str, int] = {}
@@ -109,7 +115,7 @@ class SymbolReorderer:
             return []
         if run_id != current:
             self.run[symbol] = run_id
-            self.expected[symbol] = seq
+            self.expected[symbol] = 0 if seq < self.max_pending else seq
             self.pending[symbol] = {}
         expected = self.expected[symbol]
         if seq < expected:

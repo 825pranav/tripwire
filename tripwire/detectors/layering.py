@@ -18,7 +18,7 @@ from typing import NamedTuple
 
 from tripwire.common.alerts import Alert, clamp01, make_alert_id
 from tripwire.common.events import CancelReason, Event, OrderCancelled, Side
-from tripwire.detectors.base import MS, NO_ALERTS
+from tripwire.detectors.base import ALL_EVENTS, MS, NO_ALERTS
 from tripwire.detectors.config import LayeringConfig
 from tripwire.detectors.state import Fill, MarketState
 
@@ -49,23 +49,27 @@ class _Burst:
 
 class LayeringDetector:
     name = "layering"
+    wants: tuple[type, ...] = ALL_EVENTS
 
     def __init__(self, config: LayeringConfig) -> None:
         self.config = config
         self.window_ns = config.cancel_window_ms * MS
         self.pending: dict[tuple[str, str, Side], _Burst] = {}
-        self.next_deadline: int | None = None
+        # earliest open burst deadline per symbol; time is tracked per symbol so the result
+        # does not depend on how a consumer interleaves different symbols' streams
+        self.next_deadline: dict[str, int] = {}
 
     def on_event(self, event: Event, state: MarketState) -> list[Alert]:
         alerts = NO_ALERTS
-        if self.next_deadline is not None and event.ts > self.next_deadline:
-            alerts = self._close_due(event.ts)
+        deadline = self.next_deadline.get(event.symbol)
+        if deadline is not None and event.ts > deadline:
+            alerts = self._close_due(event.ts, event.symbol)
         if isinstance(event, OrderCancelled) and event.reason is CancelReason.USER:
             self._collect(event, state)
         return alerts
 
     def finish(self, ts: int) -> list[Alert]:
-        return self._close_due(None)
+        return self._close_due(None, None)
 
     def _collect(self, event: OrderCancelled, state: MarketState) -> None:
         order = state.orders.get(event.order_id)
@@ -82,8 +86,9 @@ class LayeringDetector:
             burst = self.pending[key] = _Burst(
                 event.account, event.symbol, event.side, fills, deadline
             )
-            if self.next_deadline is None or deadline < self.next_deadline:
-                self.next_deadline = deadline
+            current = self.next_deadline.get(event.symbol)
+            if current is None or deadline < current:
+                self.next_deadline[event.symbol] = deadline
         if order.ts <= burst.start_ns:
             burst.cancels.append(
                 _Cancel(
@@ -96,15 +101,20 @@ class LayeringDetector:
                 )
             )
 
-    def _close_due(self, now: int | None) -> list[Alert]:
+    def _close_due(self, now: int | None, symbol: str | None) -> list[Alert]:
+        """Close bursts past their deadline (for one symbol, or all when `symbol` is None)."""
         alerts: list[Alert] = []
         for key, burst in list(self.pending.items()):
-            if now is None or burst.deadline < now:
+            if (symbol is None or burst.symbol == symbol) and (now is None or burst.deadline < now):
                 del self.pending[key]
                 alert = self._evaluate(burst, now if now is not None else burst.deadline)
                 if alert is not None:
                     alerts.append(alert)
-        self.next_deadline = min((b.deadline for b in self.pending.values()), default=None)
+        self.next_deadline = {}
+        for burst in self.pending.values():
+            current = self.next_deadline.get(burst.symbol)
+            if current is None or burst.deadline < current:
+                self.next_deadline[burst.symbol] = burst.deadline
         return alerts
 
     def _evaluate(self, burst: _Burst, now: int) -> Alert | None:

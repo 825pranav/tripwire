@@ -61,7 +61,7 @@ class LiveOrder:
 
 
 class MarketState:
-    __slots__ = ("cancels", "fills", "last_price", "live_qty", "orders", "snapshots")
+    __slots__ = ("cancels", "fills", "last_price", "live_qty", "orders", "snapshots", "tops")
 
     def __init__(self) -> None:
         self.orders: dict[int, LiveOrder] = {}
@@ -71,20 +71,19 @@ class MarketState:
         self.cancels: dict[tuple[str, str], deque[Cancel]] = {}
         # resting quantity per (account, symbol, side)
         self.live_qty: dict[tuple[str, str, Side], int] = {}
+        # per symbol, from the latest snapshot: (best bid, best ask, average touch size)
+        self.tops: dict[str, tuple[int | None, int | None, float]] = {}
 
     def touch_size(self, symbol: str) -> float:
         """Average displayed quantity at the best bid and ask (latest snapshot)."""
-        snap = self.snapshots.get(symbol)
-        if snap is None or not snap.bids or not snap.asks:
-            return 0.0
-        return (snap.bids[0][1] + snap.asks[0][1]) / 2
+        top = self.tops.get(symbol)
+        return top[2] if top is not None else 0.0
 
     def best(self, symbol: str, side: Side) -> int | None:
-        snap = self.snapshots.get(symbol)
-        if snap is None:
+        top = self.tops.get(symbol)
+        if top is None:
             return None
-        levels = snap.bids if side is Side.BUY else snap.asks
-        return levels[0][0] if levels else None
+        return top[0] if side is Side.BUY else top[1]
 
     def recent_fills(self, account: str, symbol: str, side: Side, since: int) -> list[Fill]:
         """The account's fills on `side` of `symbol` at or after `since` (event time)."""
@@ -103,9 +102,14 @@ class MarketState:
     def apply(self, event: Event) -> None:
         if isinstance(event, OrderAccepted):
             ticks: int | None = None
-            best = self.best(event.symbol, event.side)
-            if event.price is not None and best is not None:
-                ticks = best - event.price if event.side is Side.BUY else event.price - best
+            touch = 0.0
+            top = self.tops.get(event.symbol)
+            if top is not None:
+                is_buy = event.side is Side.BUY
+                best = top[0] if is_buy else top[1]
+                if event.price is not None and best is not None:
+                    ticks = best - event.price if is_buy else event.price - best
+                touch = top[2]
             self.orders[event.order_id] = LiveOrder(
                 event.account,
                 event.symbol,
@@ -114,7 +118,7 @@ class MarketState:
                 event.qty,
                 event.ts,
                 ticks,
-                self.touch_size(event.symbol),
+                touch,
             )
             if event.price is not None:
                 key = (event.account, event.symbol, event.side)
@@ -138,6 +142,13 @@ class MarketState:
             self._record_cancel(event)
         else:
             self.snapshots[event.symbol] = event
+            bids, asks = event.bids, event.asks
+            touch = (bids[0][1] + asks[0][1]) / 2 if bids and asks else 0.0
+            self.tops[event.symbol] = (
+                bids[0][0] if bids else None,
+                asks[0][0] if asks else None,
+                touch,
+            )
 
     def _record_fill(self, account: str, trade: Trade, side: Side, order_id: int) -> None:
         key = (account, trade.symbol)

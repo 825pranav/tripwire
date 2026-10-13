@@ -1,7 +1,8 @@
 """Per-account windowed behaviour features, computed from the event stream alone.
 
 Windows are tumbling, `window_s` long, aligned to the epoch, and keyed by
-(account, symbol). All windows close together when event time crosses a boundary.
+(account, symbol). A symbol's windows close when that symbol's event time crosses a
+boundary, so results do not depend on how a consumer interleaves symbols.
 
 Features (one row per window with any activity):
 - order_to_trade:       log(1 + orders / max(1, fills))
@@ -107,21 +108,23 @@ class WindowFeatures:
         self.owner_of = reference.owner_of()
         self.calendar = reference.session
         self.window_ns = window_s * SECOND
-        self.window_end = 0
-        self.accs: dict[tuple[str, str], _Acc] = {}
+        self.window_end: dict[str, int] = {}
+        self.accs: dict[str, dict[str, _Acc]] = {}  # symbol -> account -> accumulator
         self.symbols: dict[str, _SymbolWindow] = {}
         self.last_price: dict[str, int] = {}
         # order_id -> [accepted_ts, remaining qty]
         self.live: dict[int, list[int]] = {}
+        self.session_open = 0  # cached session bounds of the current trading day
         self.close_start = 0
-        self.close_end = 0
+        self.close_end = -1
 
     def process(self, event: Event) -> list[WindowRow]:
         rows: list[WindowRow] = []
-        if event.ts >= self.window_end:
-            if self.accs:
-                rows = self._close()
-            self.window_end = (event.ts // self.window_ns + 1) * self.window_ns
+        symbol = event.symbol
+        if event.ts >= self.window_end.get(symbol, 0):
+            if symbol in self.accs:
+                rows = self._close(symbol)
+            self.window_end[symbol] = (event.ts // self.window_ns + 1) * self.window_ns
         if isinstance(event, OrderAccepted):
             self._on_accept(event)
         elif isinstance(event, Trade):
@@ -131,7 +134,10 @@ class WindowFeatures:
         return rows
 
     def finish(self) -> list[WindowRow]:
-        return self._close() if self.accs else []
+        rows: list[WindowRow] = []
+        for symbol in list(self.accs):
+            rows.extend(self._close(symbol))
+        return rows
 
     def run(self, events: Iterable[Event]) -> list[WindowRow]:
         rows: list[WindowRow] = []
@@ -141,10 +147,12 @@ class WindowFeatures:
         return rows
 
     def _acc(self, account: str, symbol: str) -> _Acc:
-        key = (account, symbol)
-        acc = self.accs.get(key)
+        accs = self.accs.get(symbol)
+        if accs is None:
+            accs = self.accs[symbol] = {}
+        acc = accs.get(account)
         if acc is None:
-            acc = self.accs[key] = _Acc()
+            acc = accs[account] = _Acc()
         return acc
 
     def _on_accept(self, event: OrderAccepted) -> None:
@@ -171,8 +179,8 @@ class WindowFeatures:
         sym.last_price = trade.price
         sym.volume += trade.qty
         self.last_price[symbol] = trade.price
-        if not self.close_start <= trade.ts < self.close_end:
-            _, self.close_end = self.calendar.bounds(trade.ts)
+        if not self.session_open <= trade.ts < self.close_end:
+            self.session_open, self.close_end = self.calendar.bounds(trade.ts)
             self.close_start = self.close_end - CLOSE_PERIOD_NS
         in_close = self.close_start <= trade.ts < self.close_end
         if in_close:
@@ -201,15 +209,15 @@ class WindowFeatures:
                 if entry[1] <= 0:
                     del self.live[order_id]
 
-    def _close(self) -> list[WindowRow]:
-        end = self.window_end
+    def _close(self, symbol: str) -> list[WindowRow]:
+        end = self.window_end[symbol]
         start = end - self.window_ns
         window_s = self.window_ns / SECOND
         rows = []
-        for (account, symbol), acc in self.accs.items():
+        sym = self.symbols.pop(symbol, None)
+        for account, acc in self.accs.pop(symbol).items():
             if acc.orders < 2 and acc.fills == 0:
                 continue
-            sym = self.symbols.get(symbol)
             impact = 0.0
             eos_share = 0.0
             if sym is not None and sym.volume:
@@ -233,8 +241,6 @@ class WindowFeatures:
             notable = sorted(acc.notable, reverse=True)[:12]
             order_ids = tuple(dict.fromkeys(oid for _, oid in notable))
             rows.append(WindowRow(account, symbol, start, end, features, order_ids))
-        self.accs = {}
-        self.symbols = {}
         return rows
 
 

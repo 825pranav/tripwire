@@ -28,6 +28,7 @@ from tripwire.detectors.state import MarketState
 
 class SpoofingDetector:
     name = "spoofing"
+    wants: tuple[type, ...] = (OrderCancelled,)
 
     def __init__(self, config: SpoofingConfig) -> None:
         self.config = config

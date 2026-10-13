@@ -120,3 +120,10 @@ def test_model_with_stale_feature_set_is_rejected(tmp_path) -> None:  # type: ig
     stale.save(path)
     with pytest.raises(ValueError, match="make train"):
         load_model(path)
+
+
+def test_fast_forest_matches_sklearn_scores() -> None:
+    model = load_model()
+    rng = np.random.default_rng(0)
+    x = np.abs(rng.normal(1.0, 1.5, size=(400, len(FEATURES))))
+    np.testing.assert_allclose(model.raw(x), -model.forest.score_samples(x), rtol=0, atol=1e-12)

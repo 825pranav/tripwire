@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import joblib
 import numpy as np
 from sklearn.ensemble import IsolationForest
 
+from tripwire.ml.fastforest import FastForest
 from tripwire.ml.features import FEATURES
 
 MODEL_PATH = Path(__file__).resolve().parent / "models" / "iforest.joblib"
@@ -23,8 +25,16 @@ class AnomalyModel:
     top: float
 
     def raw(self, x: np.ndarray) -> np.ndarray:
-        """Anomaly score: higher is more unusual."""
-        return -self.forest.score_samples(x)
+        """Anomaly score: higher is more unusual (same as -forest.score_samples)."""
+        fast = self.__dict__.get("_fast")
+        if fast is None:
+            fast = self.__dict__["_fast"] = FastForest(self.forest)
+        return fast.scores(x)
+
+    def __getstate__(self) -> dict[str, Any]:
+        state = dict(self.__dict__)
+        state.pop("_fast", None)  # rebuilt on first use, never pickled
+        return state
 
     def normalise(self, raw: np.ndarray) -> np.ndarray:
         """Map raw scores to 0..1 where 0.5 is the alert threshold."""

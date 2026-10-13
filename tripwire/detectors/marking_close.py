@@ -19,7 +19,7 @@ from __future__ import annotations
 from tripwire.common.alerts import Alert, clamp01, make_alert_id
 from tripwire.common.events import Event, Side, Trade
 from tripwire.common.reference import SessionCalendar
-from tripwire.detectors.base import NO_ALERTS, SECOND
+from tripwire.detectors.base import ALL_EVENTS, NO_ALERTS, SECOND
 from tripwire.detectors.config import MarkingCloseConfig
 from tripwire.detectors.state import MarketState
 
@@ -57,6 +57,7 @@ class _CloseWindow:
 
 class MarkingCloseDetector:
     name = "marking_close"
+    wants: tuple[type, ...] = ALL_EVENTS
 
     def __init__(self, config: MarkingCloseConfig, calendar: SessionCalendar) -> None:
         self.config = config
@@ -67,14 +68,15 @@ class MarkingCloseDetector:
 
     def on_event(self, event: Event, state: MarketState) -> list[Alert]:
         alerts = NO_ALERTS
-        if self.windows and event.ts >= self.session[1]:
-            alerts = self._close(event.ts)
+        window = self.windows.get(event.symbol)
+        if window is not None and event.ts >= window.close_ns:
+            alerts = self._close(event.ts, event.symbol)
         if isinstance(event, Trade):
             self._on_trade(event, state)
         return alerts
 
     def finish(self, ts: int) -> list[Alert]:
-        return self._close(ts) if self.windows else NO_ALERTS
+        return self._close(ts, None) if self.windows else NO_ALERTS
 
     def _on_trade(self, trade: Trade, state: MarketState) -> None:
         opened, close = self.session
@@ -103,14 +105,15 @@ class MarkingCloseDetector:
             aggressor.sell_qty += trade.qty
         aggressor.order_ids[order_id] = None
 
-    def _close(self, now: int) -> list[Alert]:
+    def _close(self, now: int, symbol: str | None) -> list[Alert]:
+        """Evaluate the close window of one symbol (or all), per symbol event time."""
         alerts: list[Alert] = []
-        for window in self.windows.values():
+        for sym in [symbol] if symbol is not None else list(self.windows):
+            window = self.windows.pop(sym)
             for account, aggressor in window.aggressors.items():
                 alert = self._evaluate(window, account, aggressor, now)
                 if alert is not None:
                     alerts.append(alert)
-        self.windows.clear()
         return alerts
 
     def _evaluate(

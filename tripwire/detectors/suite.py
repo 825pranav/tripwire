@@ -11,7 +11,7 @@ from collections.abc import Iterable
 from tripwire.common.alerts import Alert
 from tripwire.common.events import Event
 from tripwire.common.reference import ReferenceData
-from tripwire.detectors.base import Detector
+from tripwire.detectors.base import ALL_EVENTS, Detector
 from tripwire.detectors.config import DetectorConfig, load_config
 from tripwire.detectors.layering import LayeringDetector
 from tripwire.detectors.marking_close import MarkingCloseDetector
@@ -31,11 +31,15 @@ class DetectorSuite:
             MarkingCloseDetector(config.marking_close, reference.session),
         ]
         self.last_ts = 0
+        # per event type, the detectors that want it (in suite order)
+        self.handlers: dict[type, list[Detector]] = {
+            kind: [d for d in self.detectors if kind in d.wants] for kind in ALL_EVENTS
+        }
 
     def process(self, event: Event) -> list[Alert]:
         alerts: list[Alert] = []
         state = self.state
-        for detector in self.detectors:
+        for detector in self.handlers[type(event)]:
             found = detector.on_event(event, state)
             if found:
                 alerts.extend(found)

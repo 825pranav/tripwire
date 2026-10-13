@@ -262,3 +262,28 @@ def test_suite_is_deterministic() -> None:
     simulate_day(config, 5, 0, events.append, population=population)
     reference = reference_data(config, population)
     assert DetectorSuite(reference).run(events) == DetectorSuite(reference).run(events)
+
+
+def test_alerts_do_not_depend_on_how_symbols_are_interleaved() -> None:
+    """A Kafka consumer sees each symbol in order, but symbols can drift apart in time
+    (e.g. while catching up on a backlog). Processing a day symbol by symbol must give
+    the same alerts as processing it in global time order."""
+    from tripwire.ml.model import load_model
+    from tripwire.ml.scorer import MLScorer
+
+    config = SimConfig(session_minutes=45)
+    population = build_population(config)
+    reference = reference_data(config, population)
+    events: list[Event] = []
+    simulate_day(config, 11, 0, events.append, population=population)
+    by_symbol = sorted(events, key=lambda e: e.symbol)  # stable: keeps per-symbol order
+
+    def detect(stream: list[Event]) -> set[tuple[object, ...]]:
+        alerts = DetectorSuite(reference).run(stream) + MLScorer(load_model(), reference).run(
+            stream
+        )
+        return {(a.type, a.symbol, a.accounts, a.order_ids, a.window_start_ns) for a in alerts}
+
+    in_order = detect(events)
+    assert in_order
+    assert detect(by_symbol) == in_order

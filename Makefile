@@ -1,6 +1,6 @@
 # Tripwire. Targets are added phase by phase; `make check` runs after every phase.
 
-.PHONY: help install lint format typecheck test test-full determinism smoke-eval propose-baseline approve-baseline eval train check check-full sim-replay up down sim logs doctor demo frontend frontend-build
+.PHONY: help install lint format typecheck test test-full determinism smoke-eval propose-baseline approve-baseline eval train check check-full sim-replay up down sim logs doctor demo frontend frontend-build bench
 
 help:
 	@echo "install      uv sync (all dependency groups)"
@@ -11,6 +11,7 @@ help:
 	@echo "propose-baseline / approve-baseline   re-measure the smoke baseline / adopt it"
 	@echo "train        fit the Isolation Forest on simulated clean days"
 	@echo "eval         rules, ML, union and fusion on 10 seeded days -> tripwire/eval/results"
+	@echo "bench        engine, detector and end-to-end Kafka throughput + alert latency"
 	@echo "check        lint + typecheck + fast tests + determinism + smoke eval (< ~60s)"
 	@echo "check-full   check + slow tests + 20-day eval, diffed against the last full run"
 	@echo "sim-replay   simulate one seeded day at max speed (no Kafka)"
@@ -64,6 +65,8 @@ check: lint typecheck test determinism smoke-eval
 
 check-full: lint typecheck test-full determinism smoke-eval frontend-build
 	uv run python -m tripwire.eval --days 20 --full --citations 10
+	docker compose up -d --wait kafka
+	uv run python -m tripwire.eval.bench --label check-full
 
 sim-replay:
 	uv run python -m tripwire.sim --seed 42 --days 1
@@ -91,3 +94,7 @@ frontend:
 
 frontend-build:
 	cd frontend && npm ci --no-audit --no-fund && npm run build
+
+bench:
+	docker compose up -d --wait kafka
+	uv run python -m tripwire.eval.bench
