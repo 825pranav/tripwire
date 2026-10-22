@@ -194,8 +194,8 @@ def run_checks(settings: Settings) -> list[tuple[str, str, str]]:
     return results
 
 
-def main() -> int:
-    results = run_checks(load_settings())
+def print_table(results: list[tuple[str, str, str]]) -> int:
+    """Print the check table; returns the number of failing checks."""
     width = max(len(name) for name, _, _ in results)
     print(f"{'check'.ljust(width)}  status  detail")
     print(f"{'-' * width}  ------  ------")
@@ -203,7 +203,11 @@ def main() -> int:
         print(f"{name.ljust(width)}  {status:<6}  {detail}")
     failed = sum(status == "FAIL" for _, status, _ in results)
     print(f"\n{len(results) - failed}/{len(results)} checks not failing")
-    return 1 if failed else 0
+    return failed
+
+
+def main() -> int:
+    return 1 if print_table(run_checks(load_settings())) else 0
 
 
 if __name__ == "__main__":

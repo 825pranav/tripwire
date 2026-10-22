@@ -1,6 +1,6 @@
 # Tripwire. Targets are added phase by phase; `make check` runs after every phase.
 
-.PHONY: help install lint format typecheck test test-full determinism smoke-eval propose-baseline approve-baseline eval train check check-full sim-replay up down sim logs doctor parity demo frontend frontend-build bench
+.PHONY: help install lint format typecheck test test-full determinism smoke-eval propose-baseline approve-baseline eval train check check-full sim-replay start up down sim logs doctor parity demo frontend frontend-build bench
 
 help:
 	@echo "install      uv sync (all dependency groups)"
@@ -15,13 +15,14 @@ help:
 	@echo "check        lint + typecheck + fast tests + determinism + smoke eval (< ~60s)"
 	@echo "check-full   check + slow tests + 20-day eval, diffed against the last full run"
 	@echo "sim-replay   simulate one seeded day at max speed (no Kafka)"
+	@echo "start        one command: Docker + Ollama + stack + simulator, wait healthy, open dashboard"
 	@echo "up           start Kafka, Postgres and the services (docker compose)"
 	@echo "sim          start the realtime simulator feeding Kafka"
 	@echo "down         stop everything (keeps the database volume)"
 	@echo "logs         follow service logs"
 	@echo "doctor       pass/fail health table for the running system"
 	@echo "parity       live alerts for the last streamed day vs the same day in-process"
-	@echo "demo         up + sim, then open the dashboard at http://localhost:8000"
+	@echo "demo         alias for start"
 	@echo "frontend     run the Vite dev server (proxying the API on :8000)"
 
 install:
@@ -90,8 +91,10 @@ doctor:
 parity:
 	uv run python -m tripwire.ops.parity
 
-demo: up sim
-	uv run python -c "import webbrowser, time; time.sleep(5); webbrowser.open('http://localhost:8000')"
+start:
+	uv run python -m tripwire.ops.start
+
+demo: start
 
 frontend:
 	cd frontend && npm install && npm run dev

@@ -41,14 +41,19 @@ e.g. `winget install ezwinports.make`, or run the commands in the Makefile by ha
 can connect.
 
 ```bash
-ollama pull qwen2.5:7b-instruct      # any Ollama model works: set OLLAMA_MODEL
 uv sync
-make demo                            # compose up + simulator, opens http://localhost:8000
-make doctor                          # pass/fail health table for the running system
+make start      # starts Docker Desktop and Ollama if needed, pulls the model on first run,
+                # brings up the stack + simulator, waits until healthy, opens localhost:8000
+make down       # stop everything (the database volume is kept)
 ```
+
+Without make: `uv run python -m tripwire.ops.start`. Any Ollama model works: set
+`OLLAMA_MODEL`. Without Ollama the pipeline still runs; case reports queue until a model
+is reachable.
 
 | target | what it does |
 |---|---|
+| `make start` | everything above in one command (`make demo` is an alias) |
 | `make up` / `make sim` / `make down` | start the stack / start the realtime simulator / stop |
 | `make doctor` / `make parity` | health table / compare the last streamed day's alerts with an in-process replay |
 | `make eval` | rules, ML, union and fusion on 10 seeded days, plus LLM citation accuracy |
