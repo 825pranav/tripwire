@@ -1,5 +1,6 @@
-"""FastAPI app: REST for alerts, case reports, replay, metrics and health; a WebSocket for
-live book snapshots, trades and alerts. Pydantic is used only here, at the boundary."""
+"""FastAPI app: REST for alerts, case reports, replay, metrics and health; Prometheus
+`/metrics`; a WebSocket for live book snapshots, trades and alerts. Pydantic is used only
+here, at the boundary."""
 
 from __future__ import annotations
 
@@ -14,10 +15,11 @@ from typing import Annotated, Any
 
 from confluent_kafka.admin import AdminClient
 from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from tripwire.api import metrics as prom
 from tripwire.api import queries
 from tripwire.api.live import LiveHub
 from tripwire.common.config import Settings, load_settings
@@ -142,6 +144,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         deps = check_dependencies(settings, pool)
         body = Readiness(ready=all(d.ok for d in deps), dependencies=deps)
         return JSONResponse(body.model_dump(), status_code=200 if body.ready else 503)
+
+    @app.get("/metrics", include_in_schema=False)
+    def prometheus_metrics() -> Response:
+        deps = {d.name: d.ok for d in check_dependencies(settings, pool)}
+        body = prom.render(prom.gather(settings, pool, deps))
+        return Response(body, media_type=prom.CONTENT_TYPE_LATEST)
 
     @app.get("/api/status")
     def status() -> dict[str, Any]:

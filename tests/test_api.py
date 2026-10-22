@@ -80,3 +80,74 @@ def test_live_messages() -> None:
     assert to_message("orders", encode(order)) is None
     alert = json.dumps({"alert_id": "x"}).encode()
     assert to_message("alerts", alert) == {"kind": "alert", "data": {"alert_id": "x"}}
+
+
+def beat(service: str, last_event_ns: int | None, processed: int, age_s: float, **details: int):
+    return {
+        "service": service,
+        "last_event_ns": last_event_ns,
+        "processed": processed,
+        "details": details,
+        "age_s": age_s,
+    }
+
+
+def test_metrics_render_doctor_signals_in_prometheus_format() -> None:
+    from prometheus_client.parser import text_string_to_metric_families
+
+    from tripwire.api.metrics import Snapshot, render
+
+    snap = Snapshot(
+        dependencies={"kafka": True, "postgres": True, "ollama": False},
+        services=[
+            beat("sim", 300 * 10**9, 900, 1.5),
+            beat("detectors", 240 * 10**9, 880, 2.0),
+            beat("investigator", None, 3, 40.0, queue_depth=7, queue_cap=50),
+        ],
+        lag={"detectors": 120, "investigator": None},
+        alerts=[{"type": "spoofing", "source": "rules", "n": 4}],
+        reports=[
+            {"status": "verified", "n": 2, "citations": 10, "valid": 9, "median_latency_ms": 51_000}
+        ],
+    )
+    samples = {
+        (s.name, tuple(sorted(s.labels.items()))): s.value
+        for family in text_string_to_metric_families(render(snap).decode())
+        for s in family.samples
+    }
+    assert samples[("tripwire_dependency_up", (("dependency", "ollama"),))] == 0
+    assert samples[("tripwire_dependency_up", (("dependency", "kafka"),))] == 1
+    assert samples[("tripwire_heartbeat_age_seconds", (("service", "investigator"),))] == 40.0
+    assert samples[("tripwire_processed_events_total", (("service", "sim"),))] == 900
+    assert samples[("tripwire_detectors_behind_simulator_seconds", ())] == 60.0
+    assert samples[("tripwire_investigator_queue_depth", ())] == 7
+    assert samples[("tripwire_consumer_lag_messages", (("group", "detectors"),))] == 120
+    assert ("tripwire_consumer_lag_messages", (("group", "investigator"),)) not in samples
+    assert samples[("tripwire_alerts_total", (("source", "rules"), ("type", "spoofing")))] == 4
+    assert (
+        samples[
+            ("tripwire_case_report_citations_total", (("status", "verified"), ("valid", "false")))
+        ]
+        == 1
+    )
+    assert (
+        samples[("tripwire_case_report_latency_median_seconds", (("status", "verified"),))] == 51.0
+    )
+
+
+def test_metrics_endpoint_survives_dependencies_being_down(monkeypatch: pytest.MonkeyPatch) -> None:
+    import tripwire.api.app as app_module
+
+    down = [
+        app_module.DependencyStatus(name=n, ok=False, detail="down")
+        for n in ("kafka", "postgres", "ollama")
+    ]
+    monkeypatch.setattr(app_module, "check_dependencies", lambda settings, pool: down)
+    settings = Settings(
+        database_url="postgresql://x:y@localhost:1/z", kafka_bootstrap="localhost:1"
+    )
+    response = TestClient(create_app(settings)).get("/metrics")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/plain")
+    assert 'tripwire_dependency_up{dependency="postgres"} 0.0' in response.text
+    assert "tripwire_heartbeat_age_seconds" not in response.text  # postgres down: no heartbeats

@@ -143,6 +143,7 @@ def main() -> int:
         step(f"Tripwire is up: {DASHBOARD_URL}")
     else:
         step(f"started, but some checks still fail (see above); dashboard: {DASHBOARD_URL}")
+    print("    grafana       http://localhost:3000/d/tripwire-ops   (prometheus on :9090)")
     print("    make doctor   health table     make logs   follow logs     make down   stop")
     if not args.no_browser:
         webbrowser.open(DASHBOARD_URL)

@@ -1,0 +1,54 @@
+# On-call rules. Thresholds match the doctor checks in tripwire/ops/doctor.py.
+groups:
+  - name: tripwire
+    rules:
+      - alert: TripwireApiDown
+        expr: up{job="tripwire"} == 0
+        for: 1m
+        labels: {severity: page}
+        annotations:
+          summary: "Tripwire API is not answering /metrics"
+
+      - alert: TripwireDependencyDown
+        expr: tripwire_dependency_up == 0
+        for: 1m
+        labels: {severity: page}
+        annotations:
+          summary: "{{ $labels.dependency }} fails its readiness check"
+
+      - alert: TripwireHeartbeatStale
+        expr: tripwire_heartbeat_age_seconds > 15
+        for: 1m
+        labels: {severity: page}
+        annotations:
+          summary: "{{ $labels.service }} has not written a heartbeat for {{ $value | humanizeDuration }}"
+
+      - alert: TripwireConsumerLagHigh
+        expr: tripwire_consumer_lag_messages > 5000
+        for: 2m
+        labels: {severity: ticket}
+        annotations:
+          summary: "{{ $labels.group }} is {{ $value }} messages behind"
+
+      - alert: TripwireDetectorsFallingBehind
+        expr: tripwire_detectors_behind_simulator_seconds > 120
+        for: 2m
+        labels: {severity: ticket}
+        annotations:
+          summary: "Detectors are {{ $value | humanizeDuration }} of simulated time behind the simulator"
+
+      - alert: TripwireInvestigatorQueueFull
+        expr: tripwire_investigator_queue_depth >= tripwire_investigator_queue_capacity
+        for: 2m
+        labels: {severity: ticket}
+        annotations:
+          summary: "Case-report queue is full; alert intake is paused"
+
+      - alert: TripwireUnverifiedReportsHigh
+        expr: |
+          sum(tripwire_case_reports_total{status="unverified"})
+            / sum(tripwire_case_reports_total) > 0.5
+        for: 10m
+        labels: {severity: ticket}
+        annotations:
+          summary: "Over half of the LLM case reports failed citation validation"

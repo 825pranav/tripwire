@@ -55,6 +55,7 @@ is reachable.
 |---|---|
 | `make start` | everything above in one command (`make demo` is an alias) |
 | `make up` / `make sim` / `make down` | start the stack / start the realtime simulator / stop |
+| `make grafana` | open the Grafana operations dashboard (Prometheus on :9090) |
 | `make doctor` / `make parity` | health table / compare the last streamed day's alerts with an in-process replay |
 | `make eval` | rules, ML, union and fusion on 10 seeded days, plus LLM citation accuracy |
 | `make bench` | engine, detector and end-to-end Kafka throughput, alert latency |
@@ -126,6 +127,17 @@ that the Ollama model is pulled. `make doctor` and the dashboard status bar show
 heartbeats, consumer lag, the LLM queue depth and the share of unverified reports. They
 also compare the event time the detectors have reached with the simulator's: a fresh
 heartbeat only proves a loop is running, not that events get through.
+
+**Monitoring.** The API serves the same signals at `/metrics` in Prometheus format,
+read at scrape time from the heartbeat table, Kafka offsets and the alert and report
+tables, so the doctor and Grafana never disagree. The stack includes Prometheus
+(`localhost:9090`, scraping every 15 s) with on-call alert rules that use the doctor's
+thresholds (dependency down, heartbeat stale > 15 s, consumer lag > 5,000, detectors
+> 2 simulated min behind, investigator queue full, most reports unverified), and Grafana
+(`localhost:3000`, no login) with a provisioned *Tripwire operations* dashboard:
+dependency status, stale services, alert rate, citation validity, per-service throughput,
+consumer lag, heartbeat age, queue depth and report latency. Config lives in
+`monitoring/`.
 
 **Restarts.** Services handle SIGTERM: they leave the Kafka consumer group and flush what
 they hold, so a restarted service gets its partitions back within seconds. A restarted
@@ -231,10 +243,11 @@ tripwire/
   detectors/     rule detectors, shared market state, pipeline, Kafka runner
   ml/            window features, Isolation Forest training and scoring, fusion
   investigator/  evidence window, Ollama agent, citation validator, regulations, service
-  api/           FastAPI REST + WebSocket
+  api/           FastAPI REST + WebSocket, Prometheus /metrics
   eval/          eval harness, benchmarks, labels/ (git-ignored), results/
   ops/           heartbeats, doctor, CPU pinning
 frontend/        React + Vite + Tailwind dashboard
 sql/schema.sql   hand-written schema
+monitoring/      Prometheus scrape config + alert rules, provisioned Grafana dashboard
 tests/           engine, simulator, detectors, ML, investigator, API, ops, leakage
 ```

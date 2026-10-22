@@ -1,6 +1,6 @@
 # Tripwire. Targets are added phase by phase; `make check` runs after every phase.
 
-.PHONY: help install lint format typecheck test test-full determinism smoke-eval propose-baseline approve-baseline eval train check check-full sim-replay start up down sim logs doctor parity demo frontend frontend-build bench
+.PHONY: help install lint format typecheck test test-full determinism smoke-eval propose-baseline approve-baseline eval train check check-full sim-replay start up down sim logs doctor parity demo frontend frontend-build bench grafana
 
 help:
 	@echo "install      uv sync (all dependency groups)"
@@ -21,6 +21,7 @@ help:
 	@echo "down         stop everything (keeps the database volume)"
 	@echo "logs         follow service logs"
 	@echo "doctor       pass/fail health table for the running system"
+	@echo "grafana      open the Grafana operations dashboard (Prometheus on :9090)"
 	@echo "parity       live alerts for the last streamed day vs the same day in-process"
 	@echo "demo         alias for start"
 	@echo "frontend     run the Vite dev server (proxying the API on :8000)"
@@ -90,6 +91,9 @@ doctor:
 
 parity:
 	uv run python -m tripwire.ops.parity
+
+grafana:
+	uv run python -c "import webbrowser; webbrowser.open('http://localhost:3000/d/tripwire-ops')"
 
 start:
 	uv run python -m tripwire.ops.start
